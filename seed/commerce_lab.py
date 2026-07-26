@@ -524,16 +524,29 @@ def clear_writeback() -> list[MetadataChangeProposalWrapper]:
 # --- entrypoint --------------------------------------------------------------
 
 
-def build(reset: bool = False) -> list[MetadataChangeProposalWrapper]:
+def build(reset: bool = False) -> list[tuple[str, list[MetadataChangeProposalWrapper]]]:
+    """Ordered emission phases.
+
+    Order matters and batching does not preserve it: DataHub rejects a
+    structuredProperties value whose property definition is not yet committed
+    ("Unexpected null value found for ... Structured Property Definition").
+    So definitions and vocabulary go first, in their own batches, and only then
+    the assets that reference them.
+    """
     if reset:
-        return clear_writeback()
+        return [("writeback-reset", clear_writeback())]
     return [
-        *structured_property_definitions(),
-        *governance(),
-        *authoritative_source(),
-        *orchestration(),
-        *projections(),
-        *failing_assertion(),
+        ("structured-property-definitions", structured_property_definitions()),
+        ("governance-vocabulary", governance()),
+        (
+            "assets-and-lineage",
+            [
+                *authoritative_source(),
+                *orchestration(),
+                *projections(),
+                *failing_assertion(),
+            ],
+        ),
     ]
 
 
@@ -546,29 +559,39 @@ def main() -> int:
     gms = os.environ.get("DATAHUB_GMS_URL", "http://localhost:18080")
     token = os.environ.get("DATAHUB_GMS_TOKEN") or None
 
-    proposals = build(reset=args.reset)
-    print(f"{'reset' if args.reset else 'seed'}: {len(proposals)} aspect proposals -> {gms}")
+    phases = build(reset=args.reset)
+    total = sum(len(p) for _, p in phases)
+    print(f"{'reset' if args.reset else 'seed'}: {total} aspects in {len(phases)} phases -> {gms}")
     if args.dry_run:
+        for name, props in phases:
+            print(f"  {name}: {len(props)}")
         return 0
 
-    emitter = DatahubRestEmitter(gms_server=gms, token=token)
+    # openapi_ingestion is required for ASYNC_WAIT; without it the emitter
+    # silently downgrades to fire-and-forget and we lose the propagation
+    # guarantee that keeps verification from racing the indexer.
+    emitter = DatahubRestEmitter(gms_server=gms, token=token, openapi_ingestion=True)
     emitter.test_connection()
 
-    # Emit as one batch rather than per-aspect. Firing many aspects for the
-    # same entity individually makes DataHub's indexer race itself on the same
-    # OpenSearch document, which produces version_conflict_engine_exception,
-    # fails the bulk request, and stalls the MAE consumer. ASYNC_WAIT batches
-    # the writes and blocks until DataHub confirms they propagated, so the
-    # graph is queryable the moment this returns.
+    # Batch each phase rather than emitting per aspect. Firing many aspects for
+    # the same entity individually makes DataHub's indexer race itself on the
+    # same OpenSearch document, producing version_conflict_engine_exception,
+    # failing the bulk request and stalling the MAE consumer. ASYNC_WAIT batches
+    # the writes and blocks until DataHub confirms they propagated, so the graph
+    # is queryable the moment this returns.
     try:
-        emitter.emit_mcps(proposals, emit_mode=EmitMode.ASYNC_WAIT)
+        for name, props in phases:
+            if not props:
+                continue
+            emitter.emit_mcps(props, emit_mode=EmitMode.ASYNC_WAIT)
+            print(f"  {name}: {len(props)} aspects confirmed")
     except Exception as e:
-        print(f"  !! batch emit failed: {type(e).__name__}: {str(e)[:400]}")
+        print(f"  !! emit failed in phase {name!r}: {type(e).__name__}: {str(e)[:400]}")
         return 1
     finally:
         emitter.flush()
 
-    print(f"emitted {len(proposals)} aspects (batched, propagation confirmed)")
+    print(f"emitted {total} aspects (phased + batched, propagation confirmed)")
     return 0
 
 
