@@ -265,11 +265,16 @@ async def datahub_session(
     token: str | None = None,
     *,
     enable_mutations: bool = False,
+    server_log: str | None = None,
 ):
     """Open an MCP session against DataHub.
 
     Mutations stay off unless explicitly requested, so a read-only context
     retrieval cannot accidentally write to the catalog.
+
+    The MCP server logs full GraphQL queries at DEBUG to stderr, which buries
+    anything else on the terminal. Its stderr goes to `server_log` if given and
+    is discarded otherwise.
     """
     env = dict(os.environ)
     env["DATAHUB_GMS_URL"] = gms_url or env.get("DATAHUB_GMS_URL", "http://localhost:8080")
@@ -283,8 +288,9 @@ async def datahub_session(
     )
 
     trace = ToolTrace()
+    errlog = open(server_log, "a") if server_log else open(os.devnull, "w")
     try:
-        async with stdio_client(params) as (read, write):
+        async with stdio_client(params, errlog=errlog) as (read, write):
             async with ClientSession(read, write) as session:
                 await session.initialize()
                 tools = await session.list_tools()
@@ -296,3 +302,5 @@ async def datahub_session(
         raise DataHubUnavailable(
             f"could not start the DataHub MCP session: {type(e).__name__}: {e}"
         ) from e
+    finally:
+        errlog.close()
