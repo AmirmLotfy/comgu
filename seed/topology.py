@@ -80,6 +80,8 @@ TERM_CUSTOMER_SURFACE = "urn:li:glossaryTerm:comgu.CustomerFacingSurface"
 
 TAG_SIMULATED = "urn:li:tag:comgu:simulated-downstream"
 TAG_AUTHORITATIVE = "urn:li:tag:comgu:authoritative"
+# Applied by write-back once a run is resolved.
+TAG_REMEDIATED = "urn:li:tag:comgu:remediated"
 
 OWNER_COMMERCE = "urn:li:corpuser:commerce_ops"
 OWNER_DATA = "urn:li:corpuser:data_platform"

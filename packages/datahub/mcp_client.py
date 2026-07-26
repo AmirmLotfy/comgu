@@ -238,25 +238,75 @@ class DataHubMCP:
 
     # --- writes --------------------------------------------------------------
 
-    async def update_description(self, urn: str, description: str) -> Any:
-        return await self.call("update_description", {"urn": urn, "description": description})
+    # Argument names below match the server's published schemas exactly; they
+    # are not interchangeable with the more obvious names.
 
-    async def add_tags(self, urns: list[str], tags: list[str]) -> Any:
-        return await self.call("add_tags", {"urns": urns, "tags": tags})
-
-    async def add_owners(self, urns: list[str], owners: list[str]) -> Any:
-        return await self.call("add_owners", {"urns": urns, "owners": owners})
-
-    async def set_domains(self, urns: list[str], domains: list[str]) -> Any:
-        return await self.call("set_domains", {"urns": urns, "domains": domains})
-
-    async def add_structured_properties(self, urns: list[str], properties: dict[str, Any]) -> Any:
+    async def update_description(
+        self, entity_urn: str, description: str, operation: str = "replace"
+    ) -> Any:
         return await self.call(
-            "add_structured_properties", {"urns": urns, "properties": properties}
+            "update_description",
+            {"entity_urn": entity_urn, "description": description, "operation": operation},
         )
 
-    async def save_document(self, **kwargs: Any) -> Any:
-        return await self.call("save_document", kwargs)
+    async def add_tags(self, entity_urns: list[str], tag_urns: list[str]) -> Any:
+        return await self.call(
+            "add_tags", {"entity_urns": entity_urns, "tag_urns": tag_urns}
+        )
+
+    async def add_owners(
+        self,
+        entity_urns: list[str],
+        owner_urns: list[str],
+        ownership_type: str = "__system__technical_owner",
+    ) -> Any:
+        return await self.call(
+            "add_owners",
+            {
+                "entity_urns": entity_urns,
+                "owner_urns": owner_urns,
+                "ownership_type": ownership_type,
+            },
+        )
+
+    async def set_domains(self, entity_urns: list[str], domain_urn: str) -> Any:
+        return await self.call(
+            "set_domains", {"entity_urns": entity_urns, "domain_urn": domain_urn}
+        )
+
+    async def add_structured_properties(
+        self, entity_urns: list[str], property_values: dict[str, list[Any]]
+    ) -> Any:
+        """property_values maps a structured property URN to a list of values."""
+        return await self.call(
+            "add_structured_properties",
+            {"entity_urns": entity_urns, "property_values": property_values},
+        )
+
+    async def save_document(
+        self,
+        title: str,
+        content: str,
+        document_type: str = "Decision",
+        urn: str | None = None,
+        topics: list[str] | None = None,
+        related_assets: list[str] | None = None,
+    ) -> Any:
+        """document_type is an enum: Insight, Decision, FAQ, Analysis, Summary,
+        Recommendation, Note, Context. Assets are linked via `related_assets`
+        (`related_documents` links other documents, not entities)."""
+        args: dict[str, Any] = {
+            "title": title,
+            "content": content,
+            "document_type": document_type,
+        }
+        if urn:
+            args["urn"] = urn
+        if topics:
+            args["topics"] = topics
+        if related_assets:
+            args["related_assets"] = related_assets
+        return await self.call("save_document", args)
 
 
 @asynccontextmanager

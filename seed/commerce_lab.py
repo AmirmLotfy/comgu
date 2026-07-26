@@ -187,6 +187,17 @@ def governance() -> list[MetadataChangeProposalWrapper]:
                 description="Source of truth for commerce values.",
             ),
         ),
+        mcp(
+            T.TAG_REMEDIATED,
+            TagPropertiesClass(
+                name="comgu:remediated",
+                description=(
+                    "Comgu detected a contradiction on this asset, generated a validated "
+                    "correction, and recorded the resolution. See the linked run and pull "
+                    "request in this asset's structured properties."
+                ),
+            ),
+        ),
     ]
 
     terms = [
@@ -576,22 +587,26 @@ def main() -> int:
     # Batch each phase rather than emitting per aspect. Firing many aspects for
     # the same entity individually makes DataHub's indexer race itself on the
     # same OpenSearch document, producing version_conflict_engine_exception,
-    # failing the bulk request and stalling the MAE consumer. ASYNC_WAIT batches
-    # the writes and blocks until DataHub confirms they propagated, so the graph
-    # is queryable the moment this returns.
+    # failing the bulk request and stalling the MAE consumer.
+    #
+    # ASYNC, not ASYNC_WAIT: the write-trace API reports "Consumer has processed
+    # past the offset" for writes that in fact landed, so waiting on it fails
+    # runs that succeeded. Propagation is confirmed by querying the graph
+    # instead — see seed.verify.
     try:
         for name, props in phases:
             if not props:
                 continue
-            emitter.emit_mcps(props, emit_mode=EmitMode.ASYNC_WAIT)
-            print(f"  {name}: {len(props)} aspects confirmed")
+            emitter.emit_mcps(props, emit_mode=EmitMode.ASYNC)
+            print(f"  {name}: {len(props)} aspects emitted")
     except Exception as e:
         print(f"  !! emit failed in phase {name!r}: {type(e).__name__}: {str(e)[:400]}")
         return 1
     finally:
         emitter.flush()
 
-    print(f"emitted {total} aspects (phased + batched, propagation confirmed)")
+    print(f"emitted {total} aspects (phased + batched)")
+    print("run `python -m seed.verify` to confirm the graph is queryable")
     return 0
 
 
