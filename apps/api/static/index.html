@@ -37,8 +37,22 @@ header{border-bottom:1px solid var(--border);padding:.85rem 1.25rem;display:flex
 .env{font-family:var(--mono);font-size:.72rem;color:var(--slate);background:var(--ivory);
   border:1px solid var(--border);border-radius:6px;padding:.25rem .5rem}
 
-.layout{display:grid;grid-template-columns:340px 1fr;min-height:calc(100vh - 60px)}
-@media(max-width:900px){.layout{grid-template-columns:1fr}}
+.layout{display:grid;grid-template-columns:190px 340px 1fr;min-height:calc(100vh - 60px)}
+.layout.wide{grid-template-columns:190px 1fr}
+@media(max-width:1100px){.layout,.layout.wide{grid-template-columns:1fr}}
+nav.side{border-right:1px solid var(--border);padding:1rem .6rem;background:var(--white)}
+nav.side button{display:block;width:100%;text-align:left;border:0;background:none;
+  padding:.5rem .7rem;border-radius:8px;color:var(--slate);font-size:.9rem;margin-bottom:.15rem}
+nav.side button:hover{background:var(--ivory);color:var(--ink)}
+nav.side button[aria-current="page"]{background:var(--ivory);color:var(--ink);font-weight:650;
+  box-shadow:inset 3px 0 0 var(--signal)}
+.stat{border:1px solid var(--border);border-radius:12px;padding:.9rem 1rem;background:var(--white)}
+.stat .n{font-size:1.6rem;font-weight:700;letter-spacing:-.02em;font-family:var(--mono)}
+.stat .l{font-size:.75rem;color:var(--slate);text-transform:uppercase;letter-spacing:.06em}
+.grid{display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.filters{display:flex;gap:.4rem;flex-wrap:wrap;margin-bottom:.75rem}
+.filters button{font-size:.8rem;padding:.3rem .6rem}
+.filters button[aria-pressed="true"]{background:var(--ink);color:#fff;border-color:var(--ink)}
 aside{border-right:1px solid var(--border);background:var(--ivory);padding:1rem;overflow:auto}
 main{padding:1.25rem 1.5rem;max-width:1100px;overflow:auto}
 
@@ -132,7 +146,16 @@ pre.light{background:var(--ivory);color:var(--ink);border:1px solid var(--border
 </div>
 
 <div class="layout" id="app-layout">
-  <aside>
+  <nav class="side" aria-label="Sections">
+    <button data-screen="overview">Overview</button>
+    <button data-screen="runs" aria-current="page">Runs</button>
+    <button data-screen="incidents">Incidents</button>
+    <button data-screen="rules">Rules</button>
+    <button data-screen="connections">Connections</button>
+    <button data-screen="audit">Audit</button>
+    <button data-screen="settings">Settings</button>
+  </nav>
+  <aside id="runlist">
     <h3 style="margin-top:0">Runs</h3>
     <div id="runs"><div class="empty">No runs yet.<br><span class="muted">Trigger a change to start.</span></div></div>
   </aside>
@@ -186,7 +209,9 @@ async function signIn(token){
   document.getElementById("app-layout").style.display = "";
   document.querySelector("header").style.visibility = "";
   applyRole();
-  await loadEnv(); await loadRuns();
+  await loadEnv(); await loadRuns(); setScreen("runs");
+  document.querySelectorAll("nav.side button").forEach(b =>
+    b.onclick = () => setScreen(b.dataset.screen));
 }
 
 function applyRole(){
@@ -417,14 +442,229 @@ function renderDetail(d){
   }
 }
 
-async function select(id){ current=id; await refresh(); startPolling(); }
+
+// --- screen router -----------------------------------------------------------
+// One page, seven screens. Only Runs uses the master/detail split; every other
+// screen takes the full width, so the layout switches rather than leaving a
+// dead column.
+let SCREEN = "runs";
+
+function setScreen(name){
+  SCREEN = name;
+  document.querySelectorAll("nav.side button").forEach(b =>
+    b.setAttribute("aria-current", b.dataset.screen === name ? "page" : "false"));
+  const runs = name === "runs";
+  document.getElementById("runlist").style.display = runs ? "" : "none";
+  document.getElementById("app-layout").classList.toggle("wide", !runs);
+  render();
+}
+
+function statCard(n, label){ return `<div class="stat"><div class="n">${esc(n)}</div><div class="l">${esc(label)}</div></div>`; }
+
+function sevPill(s){ return `<span class="pill p-${esc(s)}">${esc(s)}</span>`; }
+
+async function render(){
+  const main = $("#detail");
+  try{
+    if(SCREEN === "runs")        return current ? renderDetail(await api(`/api/runs/${current}`))
+                                                : main.innerHTML = emptyRuns();
+    if(SCREEN === "overview")    return main.innerHTML = viewOverview(await api("/api/overview"));
+    if(SCREEN === "incidents")   return main.innerHTML = viewIncidents(await api("/api/incidents"));
+    if(SCREEN === "rules")       return main.innerHTML = viewRules(await api("/api/rules"));
+    if(SCREEN === "connections") return renderConnections(await api("/api/connections"));
+    if(SCREEN === "audit")       return main.innerHTML = viewAudit(await api("/api/audit?limit=150"));
+    if(SCREEN === "settings")    return main.innerHTML = viewSettings(await api("/api/settings"));
+  }catch(e){ main.innerHTML = `<div class="banner b-err">${esc(e.message)}</div>`; }
+}
+
+function emptyRuns(){
+  return `<div class="empty"><h2>Select or trigger a run</h2>
+    <p class="muted">Comgu traces a commerce change through DataHub lineage,<br>
+    checks every downstream surface, and proposes a validated fix.</p></div>`;
+}
+
+// --- overview ---------------------------------------------------------------
+
+function viewOverview(d){
+  const h = d.commerce_health, cls = {healthy:"p-ok",at_risk:"p-critical",degraded:"p-medium",unknown:"p-low"}[h.state];
+  const sev = d.findings_by_severity;
+  return `<h2>Overview</h2>
+  <p class="muted" style="margin-top:.15rem">Commerce health across every connected surface.</p>
+
+  <div class="card" style="margin-top:1rem">
+    <span class="pill ${cls}">${esc(h.state.replace("_"," "))}</span>
+    <span style="margin-left:.5rem">${esc(h.reason)}</span>
+  </div>
+
+  ${d.blocked_change ? `<div class="card" style="border-color:var(--signal)">
+    <strong>A change is waiting on you.</strong>
+    <div class="muted" style="font-size:.88rem">Run ${esc(d.blocked_change.run_id.slice(0,8))} is held at approval —
+      nothing is patched or pushed until a human decides.</div>
+    <button class="btn-primary" style="margin-top:.6rem" onclick="select('${esc(d.blocked_change.run_id)}');setScreen('runs')">Review it</button>
+  </div>` : ""}
+
+  <h3>Findings by severity</h3>
+  <div class="grid">
+    ${Object.entries(sev).map(([k,v]) => statCard(v, k)).join("")}
+  </div>
+
+  <h3>Runs</h3>
+  <div class="grid">
+    ${statCard(d.counts.runs, "total")}
+    ${statCard(d.counts.completed, "completed")}
+    ${statCard(d.counts.open_incidents, "open incidents")}
+  </div>
+
+  <h3>Connected systems</h3>
+  <div class="scroll"><table><thead><tr><th>System</th><th>Status</th></tr></thead><tbody>
+  ${d.connections.map(c=>`<tr><td class="mono">${esc(c.type)}</td>
+    <td><span class="pill ${c.status==="healthy"?"p-ok":"p-medium"}">${esc(c.status)}</span></td></tr>`).join("")}
+  </tbody></table></div>
+
+  ${d.open_incidents.length ? `<h3>Open incidents</h3>` + d.open_incidents.map(i=>`
+    <div class="card ${esc(i.severity)}">${sevPill(i.severity)} <strong>${esc(i.title)}</strong>
+    <div class="muted" style="font-size:.87rem">${esc(i.status)} · ${i.finding_count} findings</div></div>`).join("") : ""}`;
+}
+
+// --- incidents --------------------------------------------------------------
+
+function viewIncidents(d){
+  if(!d.incidents.length) return `<h2>Incidents</h2><div class="empty">No incidents yet.</div>`;
+  return `<h2>Incidents</h2>
+  <p class="muted" style="margin-top:.15rem">The merchant-facing view of a run. Status follows the run rather than being set by hand.</p>
+  ${d.incidents.map(i=>`
+    <div class="card ${esc(i.severity)}">
+      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        ${sevPill(i.severity)}
+        <span class="pill ${i.status==="resolved"?"p-ok":i.status==="dismissed"?"p-low":"p-run"}">${esc(i.status)}</span>
+        <strong>${esc(i.title)}</strong>
+      </div>
+      <p style="margin:.5rem 0">${esc(i.description)}</p>
+      <div class="muted" style="font-size:.85rem">
+        ${i.finding_count} findings · opened ${new Date(i.opened_at).toLocaleString()}
+        ${i.resolved_at ? ` · resolved ${new Date(i.resolved_at).toLocaleString()}` : ""}
+      </div>
+      ${i.run_id ? `<button style="margin-top:.6rem" onclick="select('${esc(i.run_id)}');setScreen('runs')">Open run</button>` : ""}
+    </div>`).join("")}`;
+}
+
+// --- rules ------------------------------------------------------------------
+
+function viewRules(d){
+  return `<h2>Rules</h2>
+  <p class="muted" style="margin-top:.15rem">The registry is projected from the executing code, so it cannot claim a version the code disagrees with.</p>
+  ${d.rules.map(r=>`
+    <div class="card">
+      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <span class="mono"><strong>${esc(r.code)}</strong></span>
+        <span class="pill p-low">${esc(r.category)}</span>
+        <span class="pill ${r.enabled?"p-ok":"p-low"}">${r.enabled?"enabled":"disabled"}</span>
+      </div>
+      <p style="margin:.5rem 0">${esc(r.description)}</p>
+      <dl class="kv">
+        <dt>Versions</dt><dd>${r.versions.map(v=>`v${v.version} (${esc(v.checksum)})`).join(", ")}</dd>
+        <dt>Implementation</dt><dd>${esc((r.versions[0]||{}).implementation||"—")}</dd>
+        <dt>Templates</dt><dd>${((r.versions[0]||{}).remediation_templates||[]).join(", ")||"—"}</dd>
+        <dt>Executions</dt><dd>${Object.entries(r.executions).map(([k,v])=>`${k}=${v}`).join(" ")||"none yet"}</dd>
+        <dt>Findings produced</dt><dd>${r.findings_produced}</dd>
+      </dl>
+    </div>`).join("")}`;
+}
+
+// --- connections ------------------------------------------------------------
+
+function renderConnections(d){
+  $("#detail").innerHTML = `<h2>Connections</h2>
+  <p class="muted" style="margin-top:.15rem">Credentials are referenced, never stored — the database holds the reference, not the value.</p>
+  ${d.connections.map(c=>`
+    <div class="card">
+      <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+        <strong>${esc(c.name)}</strong>
+        <span class="pill ${c.status==="healthy"?"p-ok":c.status==="pending"?"p-medium":"p-fail"}">${esc(c.status)}</span>
+        <span class="spacer"></span>
+        ${["datahub","github"].includes(c.type)
+          ? `<button data-test="${esc(c.type)}">Test connection</button>` : ""}
+      </div>
+      <dl class="kv" style="margin-top:.6rem">
+        ${Object.entries(c.configuration||{}).map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(String(v))}</dd>`).join("")}
+        <dt>secret</dt><dd>${esc(c.secret_reference||"—")}</dd>
+        <dt>last verified</dt><dd>${c.last_verified_at?new Date(c.last_verified_at).toLocaleString():"never"}</dd>
+      </dl>
+      ${c.last_error_message?`<p class="muted" style="margin:.5rem 0 0">${esc(c.last_error_message)}</p>`:""}
+      <p class="mono muted" id="test-${esc(c.type)}" style="margin:.4rem 0 0"></p>
+    </div>`).join("")}`;
+
+  $("#detail").querySelectorAll("[data-test]").forEach(b => b.onclick = async () => {
+    const kind = b.dataset.test, out = document.getElementById(`test-${kind}`);
+    b.disabled = true; out.textContent = "testing…";
+    try{
+      const r = await api(`/api/integrations/${kind}/test`, {method:"POST"});
+      out.textContent = `${r.ok?"ok":"failed"} · ${r.detail} · ${r.duration_ms}ms` +
+        (r.datahub_version?` · DataHub ${r.datahub_version}`:"");
+    }catch(e){ out.textContent = e.message; }
+    finally{ b.disabled = false; }
+  });
+}
+
+// --- audit ------------------------------------------------------------------
+
+function viewAudit(d){
+  return `<h2>Audit</h2>
+  <p class="muted" style="margin-top:.15rem">Append-only. ${d.total} entries recorded.</p>
+  <div class="scroll"><table><thead><tr><th>When</th><th>Action</th><th>Actor</th><th>Resource</th></tr></thead><tbody>
+  ${d.entries.map(e=>`<tr>
+    <td class="mono">${new Date(e.at).toLocaleTimeString()}</td>
+    <td class="mono">${esc(e.action)}</td>
+    <td>${esc(e.actor)}</td>
+    <td class="mono">${esc(e.resource_type)}${e.resource_id?" "+esc(e.resource_id.slice(0,8)):""}</td>
+  </tr>`).join("")}
+  </tbody></table></div>`;
+}
+
+// --- settings ---------------------------------------------------------------
+
+function viewSettings(d){
+  const o = d.organisation || {};
+  return `<h2>Settings</h2>
+  <h3>Organisation</h3>
+  <div class="card"><dl class="kv">
+    <dt>Name</dt><dd>${esc(o.name||"—")}</dd>
+    <dt>Slug</dt><dd>${esc(o.slug||"—")}</dd>
+    <dt>Plan</dt><dd>${esc(o.plan_code||"—")}</dd>
+  </dl></div>
+
+  <h3>You</h3>
+  <div class="card"><dl class="kv">
+    <dt>Role</dt><dd>${esc(d.you.role)}</dd>
+    <dt>Subject</dt><dd>${esc(d.you.subject)}</dd>
+    <dt>Capabilities</dt><dd>${d.you.capabilities.join(", ")}</dd>
+  </dl></div>
+
+  <h3>Roles</h3>
+  <div class="scroll"><table><thead><tr><th>Role</th><th>Capabilities</th></tr></thead><tbody>
+  ${Object.entries(d.roles).map(([r,caps])=>`<tr><td class="mono">${esc(r)}</td>
+    <td class="mono" style="font-size:.78rem">${caps.join(", ")}</td></tr>`).join("")}
+  </tbody></table></div>
+
+  <h3>Stores</h3>
+  <div class="scroll"><table><thead><tr><th>Domain</th><th>Platform</th><th>Status</th><th>Demo</th></tr></thead><tbody>
+  ${d.shops.map(s=>`<tr><td class="mono">${esc(s.domain)}</td><td>${esc(s.platform)}</td>
+    <td>${esc(s.status)}</td><td>${s.is_demo?"yes":"no"}</td></tr>`).join("")}
+  </tbody></table></div>
+
+  <h3>Demo</h3>
+  <div class="card"><dl class="kv">
+    <dt>Live PRs configured</dt><dd>${d.demo.pr_live_configured?"yes":"no"}</dd>
+    <dt>Live PRs for your role</dt><dd>${d.demo.pr_live_for_you?"yes":"no — approvals stay dry-run"}</dd>
+    <dt>DataHub</dt><dd>${esc(d.demo.datahub_gms_url||"—")}</dd>
+  </dl></div>`;
+}
+
+async function select(id){ current=id; SCREEN='runs'; await refresh(); startPolling(); }
 
 async function refresh(){
-  await loadRuns();
-  if(current){
-    try{ renderDetail(await api(`/api/runs/${current}`)); }
-    catch(e){ $("#detail").innerHTML=`<div class="banner b-err">${esc(e.message)}</div>`; }
-  }
+  if(SCREEN === "runs") await loadRuns();
+  await render();
 }
 
 function startPolling(){

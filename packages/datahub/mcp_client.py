@@ -350,7 +350,30 @@ async def datahub_session(
         raise
     except Exception as e:
         raise DataHubUnavailable(
-            f"could not start the DataHub MCP session: {type(e).__name__}: {e}"
+            f"could not start the DataHub MCP session against {env['DATAHUB_GMS_URL']}: "
+            f"{_root_cause(e)}"
         ) from e
     finally:
         errlog.close()
+
+
+def _root_cause(exc: BaseException, depth: int = 0) -> str:
+    """Unwrap to something an operator can act on.
+
+    The MCP client runs the server in a TaskGroup, so a failure to connect
+    surfaces as `ExceptionGroup: unhandled errors in a TaskGroup (1
+    sub-exception)` — which says nothing about DataHub being unreachable.
+    """
+    if depth > 4:
+        return f"{type(exc).__name__}: {exc}"
+
+    inner = getattr(exc, "exceptions", None)
+    if inner:
+        return "; ".join(_root_cause(e, depth + 1) for e in inner[:3])
+    if exc.__cause__ is not None:
+        return _root_cause(exc.__cause__, depth + 1)
+
+    detail = str(exc).strip() or type(exc).__name__
+    if isinstance(exc, (ConnectionError, OSError)) or "Connection" in type(exc).__name__:
+        detail += " — is DataHub reachable, and is the tunnel up?"
+    return f"{type(exc).__name__}: {detail}"

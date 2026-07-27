@@ -251,3 +251,36 @@ def test_runs_carry_tenant_identity(db):
 
     entry = db.query(AuditLog).filter(AuditLog.resource_id == run.id).first()
     assert entry.organisation_id == "org-a", "audit entries must be tenant-scoped"
+
+
+# --- 10. DataHub unavailable (PRD 17) ----------------------------------------
+
+
+def test_datahub_failure_names_a_cause_an_operator_can_act_on():
+    """A TaskGroup ExceptionGroup says nothing about DataHub being down.
+
+    The run correctly fails rather than substituting hardcoded lineage, so the
+    message it records is the only thing an operator has to go on.
+    """
+    from packages.datahub.mcp_client import _root_cause
+
+    wrapped = ExceptionGroup(
+        "unhandled errors in a TaskGroup",
+        [ConnectionRefusedError(61, "Connection refused")],
+    )
+    detail = _root_cause(wrapped)
+    assert "TaskGroup" not in detail
+    assert "Connection refused" in detail
+    assert "tunnel" in detail
+
+
+def test_root_cause_unwraps_nested_causes():
+    from packages.datahub.mcp_client import _root_cause
+
+    try:
+        try:
+            raise OSError("socket closed")
+        except OSError as inner:
+            raise RuntimeError("startup failed") from inner
+    except RuntimeError as e:
+        assert "socket closed" in _root_cause(e)

@@ -23,7 +23,7 @@ from pydantic import BaseModel
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
-from apps.api import auth, shopify, shopify_oauth
+from apps.api import auth, screens, shopify, shopify_oauth
 from apps.api.db.models import (
     Approval,
     AuditLog,
@@ -582,6 +582,15 @@ async def _safe_json(raw: bytes) -> dict:
         return {}
 
 
+@app.post("/api/demo/trigger")
+def demo_trigger(
+    tasks: BackgroundTasks, db: Session = Depends(get_session),
+    who: auth.Principal = Depends(auth.require(auth.RUN_TRIGGER)),
+) -> dict[str, Any]:
+    """PRD 20 names this endpoint; it is the same action as POST /api/runs."""
+    return create_run(TriggerRequest(trigger_type="demo"), tasks, db, who)
+
+
 # --- Shopify OAuth -----------------------------------------------------------
 
 
@@ -729,6 +738,8 @@ def demo_reset(db: Session = Depends(get_session),
 
 
 # --- UI ----------------------------------------------------------------------
+
+app.include_router(screens.router)
 
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
