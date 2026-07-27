@@ -107,9 +107,26 @@ class UnregisteredCommand(ValueError):
 
 
 def _interpreter(workspace: Path) -> str:
-    venv = workspace / ".venv" / "bin" / "python"
-    if venv.exists():
-        return str(venv)
+    """Pick the interpreter that actually has the lab's dependencies.
+
+    The scratch workspace is copied without `.venv` (copying a virtualenv is
+    both slow and wrong), so the lab checkout's own interpreter is the correct
+    environment. Falling back to Comgu's interpreter looks fine locally — where
+    the dev extras happen to be installed — and then fails in deployment with
+    "No module named pytest".
+    """
+    candidates = [workspace / ".venv" / "bin" / "python"]
+
+    lab = os.environ.get("COMGU_LAB_PATH")
+    if lab:
+        candidates.append(Path(lab).expanduser() / ".venv" / "bin" / "python")
+    # The workspace lives at <tmp>/lab; its source sibling may be alongside.
+    candidates.append(workspace.parent.parent / ".venv" / "bin" / "python")
+
+    for c in candidates:
+        if c.exists():
+            return str(c)
+
     import sys
 
     return sys.executable
@@ -157,11 +174,20 @@ def run_validation(
                 timeout=timeout,
                 env=_clean_env(),
             )
-            status = "passed" if proc.returncode == 0 else "failed"
+            # An environment fault is not a test result. Reporting it as a
+            # test failure hides a broken deployment behind a red tick.
+            broken_env = "No module named" in proc.stderr or "command not found" in proc.stderr
+            if proc.returncode == 0:
+                status = "passed"
+            elif broken_env:
+                status = "error"
+            else:
+                status = "failed"
+
             step = ValidationStep(
                 sequence_number=i,
                 command_id=cid,
-                command_display=display,
+                command_display=f"{display}   [{python}]" if broken_env else display,
                 status=status,
                 exit_code=proc.returncode,
                 stdout_redacted=redact(proc.stdout)[-8000:],

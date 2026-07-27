@@ -229,3 +229,36 @@ def test_validation_fails_before_patch_and_passes_after():
         assert after.summary.get("tests_failed", 0) == 0
     finally:
         discard(patch)
+
+
+def test_interpreter_prefers_the_lab_environment(tmp_path, monkeypatch):
+    """Regression: the workspace has no .venv, so Comgu must use the lab's.
+
+    Falling back to Comgu's own interpreter passes locally (dev extras happen
+    to be installed) and fails in deployment with "No module named pytest".
+    """
+    from packages.patch.validator import _interpreter
+
+    lab = tmp_path / "lab-src"
+    (lab / ".venv" / "bin").mkdir(parents=True)
+    py = lab / ".venv" / "bin" / "python"
+    py.write_text("#!/bin/sh\n")
+    py.chmod(0o755)
+
+    workspace = tmp_path / "ws" / "lab"
+    workspace.mkdir(parents=True)
+
+    monkeypatch.setenv("COMGU_LAB_PATH", str(lab))
+    assert _interpreter(workspace) == str(py)
+
+
+def test_environment_fault_is_not_reported_as_a_test_failure(tmp_path, monkeypatch):
+    """A missing interpreter module is an error, not a red test."""
+    from packages.patch.validator import run_validation
+
+    monkeypatch.setenv("COMGU_LAB_PATH", str(tmp_path / "nonexistent"))
+    ws = tmp_path / "empty"
+    ws.mkdir()
+    run = run_validation(ws, ["pytest"])
+    assert run.status != "passed"
+    assert run.steps[0].status in ("error", "failed")
