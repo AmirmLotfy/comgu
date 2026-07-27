@@ -1,12 +1,12 @@
-Comgu run 08b4644c4f5e47819c886cc1b5231e08
-validation: {"status": "passed", "steps": 1, "failed_steps": 0, "duration_ms": 279, "tests_passed": 7}
+Comgu run 58fec068329646719a7110c8db7c0e27
+validation: {"status": "passed", "steps": 1, "failed_steps": 0, "duration_ms": 202, "tests_passed": 7}
 
 Only command ids from a fixed registry are executable; there is no path
 from a model or a finding to a shell string.
 
 ================================================================
 [1] pytest: python -m pytest -q --no-header
-status=passed exit=0 duration=279ms
+status=passed exit=0 duration=202ms
 ================================================================
 .......                                                                  [100%]
 7 passed in 0.03s

@@ -1,6 +1,6 @@
 {
   "status": "verified",
-  "document_urn": "urn:li:document:shared-27fe766c-32ec-445d-9b52-9c2af04b20d8",
+  "document_urn": "urn:li:document:shared-f04e8e22-50d6-415f-8585-a671b2b8cb41",
   "operations": [
     {
       "kind": "structured_properties",
@@ -27,7 +27,7 @@
     },
     {
       "kind": "document",
-      "target": "Comgu resolution: NH-BREW-PRO commerce parity (08b4644c)",
+      "target": "Comgu resolution: NH-BREW-PRO commerce parity (58fec068)",
       "detail": {
         "length": 2697
       },

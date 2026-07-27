@@ -101,6 +101,7 @@ def _asset_dict(a) -> dict:
         "owners": list(a.owners),
         "lab_file": a.lab_file,
         "comgu_rule": a.comgu_rule,
+        "failing_assertions": list(a.failing_assertions),
         "degree": a.degree,
     }
 
@@ -125,7 +126,7 @@ async def advance_to_approval(db: Session, run: Run) -> Run:
         projections = bridge.build_projections()
         try:
             async with datahub_session(gms_url()) as dh:
-                ctx = await build_run_context(dh, change, source_urn, projections)
+                ctx = await build_run_context(dh, change, source_urn, projections, gms_url=gms_url())
                 trace = dh.trace.to_json()
         except DataHubUnavailable as e:
             # No hardcoded lineage fallback — the run fails visibly instead.

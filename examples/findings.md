@@ -1,6 +1,6 @@
 # Findings — real run output
 
-Run `08b4644c4f5e47819c886cc1b5231e08`. Produced by `python -m apps.api.scripts.golden_path --remediate`
+Run `58fec068329646719a7110c8db7c0e27`. Produced by `python -m apps.api.scripts.golden_path --remediate`
 against a live DataHub Core instance. Not hand-written.
 
 **6 findings**, max severity `critical`.
@@ -58,6 +58,17 @@ The google_merchant_feed still lists NH-BREW-PRO at 89.00 while the catalog pric
     ],
     "has_owner": true,
     "note": null
+  }
+  ```
+- `assertion` from `datahub.assertions`
+  ```json
+  {
+    "description": "Merchant feed price must equal the authoritative catalog price.",
+    "result": "FAILURE",
+    "failed_runs": 3,
+    "expected": "109.00",
+    "observed": "89.00",
+    "note": "DataHub already recorded this asset as failing quality"
   }
   ```
 

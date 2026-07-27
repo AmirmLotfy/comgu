@@ -7,8 +7,8 @@
       "max_hops": 3,
       "max_results": 100
     },
-    "started_at": "2026-07-27T01:47:29.211198+00:00",
-    "duration_ms": 1254,
+    "started_at": "2026-07-27T02:32:14.594996+00:00",
+    "duration_ms": 1227,
     "ok": true,
     "result_bytes": 26124,
     "summary": "downstreams.total=10",
@@ -31,11 +31,83 @@
         "urn:li:dataJob:(urn:li:dataFlow:(airflow,northstar_home.commerce_sync,PROD),promo_engine)"
       ]
     },
-    "started_at": "2026-07-27T01:47:30.466216+00:00",
-    "duration_ms": 5506,
+    "started_at": "2026-07-27T02:32:15.821758+00:00",
+    "duration_ms": 5370,
     "ok": true,
-    "result_bytes": 32738,
+    "result_bytes": 37658,
     "summary": "11 items",
+    "error": null
+  },
+  {
+    "tool": "graphql:dataset.assertions",
+    "arguments": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:shopify,northstar_home.catalog.products,PROD)"
+    },
+    "started_at": "2026-07-27T02:32:21.189121+00:00",
+    "duration_ms": 152,
+    "ok": true,
+    "result_bytes": 79,
+    "summary": "0 assertions, 0 failing",
+    "error": null
+  },
+  {
+    "tool": "graphql:dataset.assertions",
+    "arguments": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD)"
+    },
+    "started_at": "2026-07-27T02:32:21.342180+00:00",
+    "duration_ms": 202,
+    "ok": true,
+    "result_bytes": 79,
+    "summary": "0 assertions, 0 failing",
+    "error": null
+  },
+  {
+    "tool": "graphql:dataset.assertions",
+    "arguments": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD)"
+    },
+    "started_at": "2026-07-27T02:32:21.544997+00:00",
+    "duration_ms": 200,
+    "ok": true,
+    "result_bytes": 79,
+    "summary": "0 assertions, 0 failing",
+    "error": null
+  },
+  {
+    "tool": "graphql:dataset.assertions",
+    "arguments": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD)"
+    },
+    "started_at": "2026-07-27T02:32:21.745371+00:00",
+    "duration_ms": 202,
+    "ok": true,
+    "result_bytes": 79,
+    "summary": "0 assertions, 0 failing",
+    "error": null
+  },
+  {
+    "tool": "graphql:dataset.assertions",
+    "arguments": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)"
+    },
+    "started_at": "2026-07-27T02:32:21.947695+00:00",
+    "duration_ms": 224,
+    "ok": true,
+    "result_bytes": 1030,
+    "summary": "1 assertions, 1 failing",
+    "error": null
+  },
+  {
+    "tool": "graphql:dataset.assertions",
+    "arguments": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)"
+    },
+    "started_at": "2026-07-27T02:32:22.171944+00:00",
+    "duration_ms": 200,
+    "ok": true,
+    "result_bytes": 79,
+    "summary": "0 assertions, 0 failing",
     "error": null
   },
   {
@@ -50,15 +122,15 @@
       ],
       "property_values": {
         "urn:li:structuredProperty:comgu.last_run": [
-          "08b4644c4f5e47819c886cc1b5231e08"
+          "58fec068329646719a7110c8db7c0e27"
         ],
         "urn:li:structuredProperty:comgu.last_validation_at": [
-          "2026-07-27T01:47:42.340649+00:00"
+          "2026-07-27T02:32:28.403038+00:00"
         ]
       }
     },
-    "started_at": "2026-07-27T01:47:42.340785+00:00",
-    "duration_ms": 1549,
+    "started_at": "2026-07-27T02:32:28.403133+00:00",
+    "duration_ms": 1530,
     "ok": true,
     "result_bytes": 89,
     "summary": "success, message",
@@ -78,8 +150,8 @@
         "urn:li:tag:comgu:remediated"
       ]
     },
-    "started_at": "2026-07-27T01:47:43.890886+00:00",
-    "duration_ms": 793,
+    "started_at": "2026-07-27T02:32:29.933434+00:00",
+    "duration_ms": 833,
     "ok": true,
     "result_bytes": 72,
     "summary": "success, message",
@@ -88,8 +160,8 @@
   {
     "tool": "save_document",
     "arguments": {
-      "title": "Comgu resolution: NH-BREW-PRO commerce parity (08b4644c)",
-      "content": "Comgu run `08b4644c4f5e47819c886cc1b5231e08` resolved 6 commerce contradiction(s) caused by a change to `NH-BREW-PRO`.\n\n## What changed\n\n- Authoritative source: `urn:li:dataset:(urn:li:dataPlatform:shopify,northstar_home.catalog.products,PROD)`\n- Price: 109.00 USD\n- Sellable inventory: 3\n- Return window: 30 days\n\n## What was wrong\n\n- **Merchant feed advertises a stale price** (critical) on `urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)`\n  - expected `109.00`, observed `89.00`\n  - Shoppers see 89.00 in Shopping ads and free listings, then are charged 109.00 at checkout.\n- **Bundle can oversell available inventory** (critical) on `urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD)`\n  - expected `3`, observed `5`\n  - Up to 2 customers can complete checkout for stock that does not exist, and their orders must be cancelled after payment.\n- **Promotion is anchored to a stale price** (high) on `urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD)`\n  - expected `109.00`, observed `89.00`\n  - The advertised sale price of 75.65 is calculated from a price the store no longer charges.\n- **AI shopping manifest is stale** (high) on `urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)`\n  - expected `{'price': '109.00', 'available': 3}`, observed `{'price': '89.00', 'available': 12}`\n  - Third-party shopping agents quote these values directly to shoppers, so the wrong price and stock level are stated as fact before the customer ever reaches the store.\n- **Customer-facing asset has no owner in DataHub** (medium) on `urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)`\n  - expected `at least one owner`, observed `none`\n  - Errors on this surface persist until someone notices, because no team is accountable for it.\n- **Storefront return policy contradicts the authoritative policy** (medium) on `urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD)`\n  - expected `30`, observed `14`\n  - Customers are told they have 14 days to return this item when they actually have 30.\n\n## How it was resolved\n\nComgu generated a patch from registered remediation templates and validated it: 7 tests passed, 0 failed.\n\nApproved by amir@comgu.site. Comgu never mutates a downstream system without a recorded human approval.\n\n## For whoever comes next\n\nThese surfaces project from the authoritative catalog. If you change price, inventory or policy at the source, expect every asset listed above to need re-derivation \u2014 pinned values in their configs will not follow automatically.",
+      "title": "Comgu resolution: NH-BREW-PRO commerce parity (58fec068)",
+      "content": "Comgu run `58fec068329646719a7110c8db7c0e27` resolved 6 commerce contradiction(s) caused by a change to `NH-BREW-PRO`.\n\n## What changed\n\n- Authoritative source: `urn:li:dataset:(urn:li:dataPlatform:shopify,northstar_home.catalog.products,PROD)`\n- Price: 109.00 USD\n- Sellable inventory: 3\n- Return window: 30 days\n\n## What was wrong\n\n- **Merchant feed advertises a stale price** (critical) on `urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)`\n  - expected `109.00`, observed `89.00`\n  - Shoppers see 89.00 in Shopping ads and free listings, then are charged 109.00 at checkout.\n- **Bundle can oversell available inventory** (critical) on `urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD)`\n  - expected `3`, observed `5`\n  - Up to 2 customers can complete checkout for stock that does not exist, and their orders must be cancelled after payment.\n- **Promotion is anchored to a stale price** (high) on `urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD)`\n  - expected `109.00`, observed `89.00`\n  - The advertised sale price of 75.65 is calculated from a price the store no longer charges.\n- **AI shopping manifest is stale** (high) on `urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)`\n  - expected `{'price': '109.00', 'available': 3}`, observed `{'price': '89.00', 'available': 12}`\n  - Third-party shopping agents quote these values directly to shoppers, so the wrong price and stock level are stated as fact before the customer ever reaches the store.\n- **Customer-facing asset has no owner in DataHub** (medium) on `urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)`\n  - expected `at least one owner`, observed `none`\n  - Errors on this surface persist until someone notices, because no team is accountable for it.\n- **Storefront return policy contradicts the authoritative policy** (medium) on `urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD)`\n  - expected `30`, observed `14`\n  - Customers are told they have 14 days to return this item when they actually have 30.\n\n## How it was resolved\n\nComgu generated a patch from registered remediation templates and validated it: 7 tests passed, 0 failed.\n\nApproved by amir@comgu.site. Comgu never mutates a downstream system without a recorded human approval.\n\n## For whoever comes next\n\nThese surfaces project from the authoritative catalog. If you change price, inventory or policy at the source, expect every asset listed above to need re-derivation \u2014 pinned values in their configs will not follow automatically.",
       "document_type": "Decision",
       "topics": [
         "commerce",
@@ -104,8 +176,8 @@
         "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)"
       ]
     },
-    "started_at": "2026-07-27T01:47:44.684218+00:00",
-    "duration_ms": 1066,
+    "started_at": "2026-07-27T02:32:30.767302+00:00",
+    "duration_ms": 1024,
     "ok": true,
     "result_bytes": 212,
     "summary": "success, urn, message, author",
@@ -122,10 +194,10 @@
         "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)"
       ]
     },
-    "started_at": "2026-07-27T01:47:45.750729+00:00",
-    "duration_ms": 3075,
+    "started_at": "2026-07-27T02:32:31.791861+00:00",
+    "duration_ms": 2744,
     "ok": true,
-    "result_bytes": 24224,
+    "result_bytes": 29145,
     "summary": "5 items",
     "error": null
   }

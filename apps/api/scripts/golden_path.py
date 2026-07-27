@@ -39,11 +39,15 @@ def hr(title: str) -> None:
 async def main() -> int:
     ap = argparse.ArgumentParser(description="Comgu golden path")
     ap.add_argument("--assert-findings", type=int, default=0)
+    ap.add_argument("--assert-completed", action="store_true",
+                    help="require the full chain to succeed; implies --remediate")
     ap.add_argument("--remediate", action="store_true", help="patch, validate and write back")
     ap.add_argument("--pr-live", action="store_true", help="open a real pull request")
     ap.add_argument("--assign-owner", default=None, help="close the ownership gap (human decision)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args()
+    if args.assert_completed:
+        args.remediate = True
 
     gms = os.environ.get("DATAHUB_GMS_URL", "http://localhost:18080")
     repo = os.environ.get("GITHUB_LAB_REPO", "")
@@ -63,7 +67,7 @@ async def main() -> int:
     # --- 1. context from DataHub --------------------------------------------
     try:
         async with datahub_session(gms) as dh:
-            ctx = await build_run_context(dh, change, source_urn, projections)
+            ctx = await build_run_context(dh, change, source_urn, projections, gms_url=gms)
             read_trace = dh.trace
     except DataHubUnavailable as e:
         print(f"\nCONTEXT_FAILED: {e}", file=sys.stderr)
@@ -187,6 +191,24 @@ async def main() -> int:
         print(f"findings={len(report.findings)} patched={len(patch.files)} "
               f"validation={validation.status} writeback={wb.status} "
               f"pr={pr.status if pr else 'skipped'}")
+
+        if args.assert_completed:
+            # Every stage must have genuinely succeeded, not merely been reached.
+            problems = []
+            if not report.findings:
+                problems.append("no findings")
+            if patch.is_empty:
+                problems.append("empty patch")
+            if patch.rejected:
+                problems.append(f"{len(patch.rejected)} rejected patch targets")
+            if not validation.passed:
+                problems.append(f"validation {validation.status}")
+            if wb.status != "verified":
+                problems.append(f"write-back {wb.status}")
+            if problems:
+                print("\nGOLDEN_PATH_FAILED: " + "; ".join(problems), file=sys.stderr)
+                return 1
+
         print("\nGOLDEN_PATH_OK" if ok else "\nGOLDEN_PATH_INCOMPLETE")
         return 0 if ok else 1
     finally:

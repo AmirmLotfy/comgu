@@ -70,6 +70,11 @@ ownership, glossary terms, domains, tags, assertions, documents, the
 `save_document` (a Decision document per resolution). Every write is read back;
 an unverified write is reported as unverified.
 
+**Quality** — a failing assertion on the merchant feed is attached to the
+price-parity finding as corroborating evidence. Read over GraphQL and labelled
+as such, because `get_dataset_assertions` does not register on DataHub Core
+v1.5.0.6 even when its gate reports enabled.
+
 Every MCP call — arguments, duration, result summary — is persisted with the run
 and rendered in the UI and the pull-request body.
 

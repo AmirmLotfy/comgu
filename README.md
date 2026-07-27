@@ -105,6 +105,10 @@ in DataHub and Comgu grades the same failure differently — also pinned by test
 **Ownership routing is catalog ownership.** The unowned AI manifest produces its
 own finding, marked not-auto-fixable, because there is nobody to route it to.
 
+**Quality signals corroborate.** A failing DataHub assertion on the merchant feed
+is attached as evidence — the catalog already knew, which tells the operator how
+long it has been wrong. It is never the trigger: Comgu's own check decides.
+
 **The MCP tool trace is persisted and shown.** Every call, its arguments,
 duration and result summary are stored with the run and rendered in the PR body.
 The reasoning is inspectable rather than asserted.
@@ -112,6 +116,12 @@ The reasoning is inspectable rather than asserted.
 Read paths use `search`, `get_entities`, `get_lineage`, `get_lineage_paths_between`
 and `list_schema_fields`. Write-back uses `add_structured_properties`, `add_tags`,
 `add_owners` and `save_document`, each verified by reading it back.
+
+Assertions are read over GraphQL rather than MCP, and the trace labels them
+`graphql:` rather than pretending otherwise: on DataHub Core v1.5.0.6 the
+`get_dataset_assertions` tool never registers even with
+`DATA_QUALITY_TOOLS_ENABLED=true`, though the gate logs `ENABLED`. Rather than
+drop the signal, Comgu reads it directly and says so.
 
 ---
 
@@ -191,12 +201,12 @@ DATAHUB_GMS_URL=http://localhost:8080 python -m seed.verify   # → COMMERCE_LAB
 Offline — no DataHub, no network:
 
 ```bash
-pytest apps packages -q
+pytest apps packages tests -q
 ```
 
 Rule engine, patch safety, planner guards, workflow transitions, webhook
 signature verification, OAuth open-redirect and state-replay resistance, and
-prompt-injection resistance: **84 tests**.
+prompt-injection resistance: **111 tests**.
 
 The commerce lab fails before remediation and passes after:
 
@@ -214,6 +224,16 @@ python -m apps.api.scripts.golden_path --remediate --assert-findings 5
 
 Add `--pr-live` with `GITHUB_LAB_REPO` set to open a real pull request. Without
 it, the PR step is a dry run and says so — a URL is never fabricated.
+
+The security suite on its own, if that is what you want to inspect:
+
+```bash
+pytest tests/security -q
+```
+
+Signature forgery, duplicate delivery, path traversal, symlink escape, command
+allowlisting, prompt injection, approval-gate bypass, OAuth open redirect and
+state replay, secret redaction, tenant scoping: 27 tests in one file.
 
 **The DataHub-dependency proof:** delete the lineage edges from the catalog,
 re-run, and the blast radius is empty and no rule can fire. Restore them and the
@@ -263,7 +283,7 @@ six findings return.
 | DataHub Skill contribution | [PR #58 open upstream](https://github.com/datahub-project/datahub-skills/pull/58) |
 | Demo video | not recorded |
 
-**84 tests**, all offline.
+**111 tests**, all offline.
 
 ---
 

@@ -17,6 +17,7 @@ from __future__ import annotations
 from typing import Any
 
 from packages.datahub.mcp_client import DataHubMCP, DataHubUnavailable
+from packages.datahub.quality import failing_only, fetch_assertions
 from packages.rules.context import AssetContext, BlastRadius, CommerceState, RunContext
 
 # How far downstream to walk. The MCP server defaults to 1 hop, which would
@@ -99,6 +100,7 @@ async def build_run_context(
     change: CommerceState,
     source_urn: str,
     projections: dict[str, list[dict[str, Any]]],
+    gms_url: str | None = None,
 ) -> RunContext:
     """Retrieve context for one commerce change.
 
@@ -137,6 +139,16 @@ async def build_run_context(
             continue
         urn = e["urn"]
         assets_by_urn[urn] = _asset_from_entity(e, degree=degrees.get(urn, 0))
+
+    # Quality signals. Corroborating evidence only — Comgu's own checks decide
+    # whether something is wrong; a failing assertion says the catalog knew too.
+    if gms_url:
+        for urn, asset in assets_by_urn.items():
+            if asset.entity_type != "DATASET":
+                continue
+            found = fetch_assertions(gms_url, urn, trace=dh.trace)
+            if found:
+                asset.failing_assertions = failing_only(found)
 
     downstream = [a for urn, a in assets_by_urn.items() if urn != source_urn]
 

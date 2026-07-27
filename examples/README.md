@@ -1,6 +1,6 @@
 # examples
 
-Real output from one Comgu run (`08b4644c4f5e47819c886cc1b5231e08`) against a live DataHub Core
+Real output from one Comgu run (`58fec068329646719a7110c8db7c0e27`) against a live DataHub Core
 instance. Regenerate with:
 
 ```bash

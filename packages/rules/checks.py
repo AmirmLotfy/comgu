@@ -74,6 +74,30 @@ def owner_evidence(asset: AssetContext) -> Evidence:
     )
 
 
+def assertion_evidence(asset: AssetContext) -> Evidence | None:
+    """A failing DataHub assertion corroborating what Comgu found.
+
+    Never the trigger — Comgu's own check decides. This says the catalog
+    already knew, which tells the operator how long it has been wrong.
+    """
+    if not asset.failing_assertions:
+        return None
+    a = asset.failing_assertions[0]
+    return Evidence(
+        evidence_type=EvidenceType.ASSERTION,
+        source="datahub.assertions",
+        source_reference=a.get("urn"),
+        content={
+            "description": a.get("description"),
+            "result": a.get("result"),
+            "failed_runs": a.get("failed_runs"),
+            "expected": a.get("expected"),
+            "observed": a.get("observed"),
+            "note": "DataHub already recorded this asset as failing quality",
+        },
+    )
+
+
 def comparison(expected: Any, observed: Any, field: str, source: str) -> Evidence:
     return Evidence(
         evidence_type=EvidenceType.VALUE_COMPARISON,
@@ -133,6 +157,12 @@ class Rule:
     def check(self, ctx: RunContext, asset: AssetContext) -> list[Finding]:
         raise NotImplementedError
 
+    @staticmethod
+    def with_quality(evidence: list[Evidence], asset: AssetContext) -> list[Evidence]:
+        """Append the catalog's own quality signal when there is one."""
+        extra = assertion_evidence(asset)
+        return [*evidence, extra] if extra else evidence
+
 
 # --- 1. price parity ---------------------------------------------------------
 
@@ -183,11 +213,14 @@ class PriceParity(Rule):
                 auto_fix_eligible=True,
                 remediation_template=self.remediation_template,
                 target_file=asset.lab_file,
-                evidence=[
-                    comparison(expected, observed, "price", "comgu.builders.merchant_feed"),
-                    lineage_evidence(ctx, asset),
-                    owner_evidence(asset),
-                ],
+                evidence=self.with_quality(
+                    [
+                        comparison(expected, observed, "price", "comgu.builders.merchant_feed"),
+                        lineage_evidence(ctx, asset),
+                        owner_evidence(asset),
+                    ],
+                    asset,
+                ),
             )
         ]
 
