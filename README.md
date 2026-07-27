@@ -210,7 +210,7 @@ pytest apps packages tests -q
 
 Rule engine, patch safety, planner guards, workflow transitions, webhook
 signature verification, OAuth open-redirect and state-replay resistance, and
-prompt-injection resistance: **111 tests**.
+prompt-injection resistance: **163 tests**.
 
 The commerce lab fails before remediation and passes after:
 
@@ -232,8 +232,19 @@ it, the PR step is a dry run and says so — a URL is never fabricated.
 The security suite on its own, if that is what you want to inspect:
 
 ```bash
-pytest tests/security -q
+pytest tests/security -q     # 29 tests
+pytest tests/failure -q      # 20 tests — every dependency broken in turn
 ```
+
+Before any of it, check the host will actually run Comgu:
+
+```bash
+python -m apps.api.scripts.doctor
+```
+
+24 checks — architecture, memory, disk, Docker, ports, CLIs, environment, the
+lab interpreter and DataHub reachability. Every failure names the remedy, not
+just the symptom.
 
 Signature forgery, duplicate delivery, path traversal, symlink escape, command
 allowlisting, prompt injection, approval-gate bypass, OAuth open redirect and
@@ -287,7 +298,7 @@ six findings return.
 | DataHub Skill contribution | [PR #58 open upstream](https://github.com/datahub-project/datahub-skills/pull/58) |
 | Demo video | not recorded |
 
-**111 tests**, all offline.
+**163 tests**, all offline.
 
 ---
 

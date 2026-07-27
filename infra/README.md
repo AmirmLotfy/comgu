@@ -65,6 +65,22 @@ Measured effect: a 1,748-message backlog drained to zero in 140 s, and the
 showcase-ecommerce datapack finished indexing at **1,267** entities rather than
 stalling at 428.
 
+## Database migrations
+
+`alembic upgrade head` builds the schema from empty. The app also calls
+`create_all` at startup, which is additive-only and safe to run alongside
+migrations — but a database created that way has **no revision stamped**, so a
+later `alembic upgrade head` will try to recreate its tables and fail with
+`table audit_logs already exists`.
+
+On an existing deployment, stamp it once:
+
+```bash
+DATABASE_URL=sqlite:///$HOME/comgu/comgu.db alembic stamp head
+```
+
+The deploy calls `stamp_if_unversioned()` for this, which is idempotent.
+
 ## Seeding
 
 From the repo root, with a tunnel to the VM

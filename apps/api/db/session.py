@@ -62,7 +62,45 @@ def SessionLocal() -> sessionmaker:
 
 
 def init_db() -> None:
+    """Create any missing tables.
+
+    `create_all` is additive and never drops or alters, so it is safe to run
+    alongside Alembic — it fills in tables a migration has not yet been written
+    for, and does nothing when the schema is current. Alembic remains the
+    source of truth for changes to existing tables, which `create_all` cannot
+    perform.
+
+    A database created this way has no version stamped, so `alembic upgrade
+    head` would try to recreate its tables. `stamp_if_unversioned` records the
+    current head instead; see infra/README.md.
+    """
     Base.metadata.create_all(engine())
+
+
+def stamp_if_unversioned(alembic_ini: str = "alembic.ini") -> str | None:
+    """Mark an already-created schema as being at the latest revision.
+
+    Returns the revision stamped, or None if the database was already
+    versioned. Idempotent, so a deploy can call it unconditionally.
+    """
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import inspect
+
+    eng = engine()
+    with eng.connect() as conn:
+        rows = []
+        if inspect(eng).has_table("alembic_version"):
+            from sqlalchemy import text
+
+            rows = list(conn.execute(text("SELECT version_num FROM alembic_version")))
+    if rows:
+        return None
+
+    cfg = Config(alembic_ini)
+    cfg.set_main_option("sqlalchemy.url", database_url())
+    command.stamp(cfg, "head")
+    return "head"
 
 
 def get_session() -> Iterator[Session]:
