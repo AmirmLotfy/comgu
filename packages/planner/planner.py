@@ -74,7 +74,7 @@ class VertexProvider:
 
     model: str = os.environ.get("COMGU_MODEL", "gemini-2.5-pro")
     project: str = os.environ.get("VERTEX_PROJECT", "")
-    location: str = os.environ.get("VERTEX_LOCATION", "europe-west1")
+    location: str = os.environ.get("VERTEX_LOCATION", "global")
     name: str = "vertex"
 
     def complete_json(self, system: str, user: str, schema: dict[str, Any]) -> str:
@@ -88,7 +88,10 @@ class VertexProvider:
             config=types.GenerateContentConfig(
                 system_instruction=system,
                 response_mime_type="application/json",
-                temperature=0.2,
+                # The schema is enforced again on our side; constraining the
+                # model here just reduces the number of rejected attempts.
+                response_json_schema=schema,
+                temperature=0.1,
             ),
         )
         return resp.text or ""
