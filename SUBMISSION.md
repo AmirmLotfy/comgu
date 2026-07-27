@@ -11,7 +11,8 @@ Everything the Devpost form asks for, in one place.
 | --- | --- |
 | Project name | Comgu |
 | Tagline | Catch commerce changes before customers do. |
-| Live demo URL | https://app.35-240-72-53.sslip.io |
+| Live demo URL | https://app.35-240-72-53.sslip.io/app |
+| Marketing site | https://comgu.vercel.app |
 | Public repository | https://github.com/AmirmLotfy/comgu |
 | Licence | Apache-2.0 |
 | Challenge category | **Metadata-Aware Code Generation & Development** (secondary: Agents That Do Real Work) |
@@ -154,4 +155,5 @@ are present.
 - [x] Tag a release (`v1.0.0`) on both repositories
 - [x] Confirm the live demo and DataHub URLs respond
 - [ ] Complete the Devpost feedback survey (10 × $50 prizes)
-- [ ] Optional: register `comgu.site` and repoint DNS from the sslip.io hosts
+- [ ] Optional: register `comgu.site` — every step is staged in [`infra/DOMAIN.md`](infra/DOMAIN.md), and both apex and www are already
+      attached to the Vercel project

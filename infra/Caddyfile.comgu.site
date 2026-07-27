@@ -1,0 +1,38 @@
+# Staged Caddyfile for comgu.site.
+#
+# NOT ACTIVE. Swap it in only after the domain resolves to this host — Caddy
+# will otherwise fail ACME challenges repeatedly, and Let's Encrypt rate-limits
+# failed authorisations per hostname.
+#
+#   sudo cp infra/Caddyfile.comgu.site /etc/caddy/Caddyfile
+#   sudo systemctl reload caddy
+#
+# The sslip.io hosts stay listed so the URLs already published in the
+# submission keep working — a judge with the old link must not hit a dead host.
+
+# --- product -----------------------------------------------------------------
+
+app.comgu.site, app.35-240-72-53.sslip.io {
+    encode gzip
+    reverse_proxy 127.0.0.1:8000
+}
+
+# --- DataHub catalog ---------------------------------------------------------
+# Basic auth in front of DataHub's own login, which is datahub/datahub and not a
+# credential to expose. GMS on :8080 is never proxied.
+
+context.comgu.site, datahub.35-240-72-53.sslip.io {
+    encode gzip
+    basic_auth {
+        judge {$COMGU_JUDGE_PASSWORD_HASH}
+    }
+    reverse_proxy 127.0.0.1:9002
+}
+
+# --- apex and www ------------------------------------------------------------
+# Marketing is served by Vercel. If DNS sends the apex here instead, redirect
+# rather than serving a second copy that can drift from the Vercel one.
+
+comgu.site, www.comgu.site {
+    redir https://comgu.site{uri} permanent
+}

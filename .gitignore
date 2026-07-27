@@ -32,3 +32,7 @@ comgu.db-shm
 
 # alembic scratch
 alembic/versions/__pycache__/
+
+# Vercel
+web/dist/
+.vercel/
