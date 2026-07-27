@@ -24,6 +24,22 @@ into the catalog.
 
 Built for [Build with DataHub: The Agent Hackathon](https://datahub.devpost.com/).
 
+## Try it
+
+| | |
+| --- | --- |
+| **Live demo** | **https://app.35-240-72-53.sslip.io** |
+| DataHub catalog | https://datahub.35-240-72-53.sslip.io — `judge` / `northstar-2026` |
+| Example pull request | [comgu-commerce-lab#1](https://github.com/AmirmLotfy/comgu-commerce-lab/pull/1) |
+
+Press **Trigger commerce change**, watch the run reach *Awaiting approval*,
+read the findings and the MCP tool trace, then **Approve**. Comgu patches five
+configuration files, runs the real parity suite, and writes the resolution back
+into DataHub. **Reset demo** restores the contradictions.
+
+Pull requests are dry-run on the hosted instance — it says so rather than
+inventing a URL. The linked PR above was opened by a real run.
+
 ---
 
 ## The golden path
@@ -115,8 +131,10 @@ repository of real transforms and real tests standing in for them. Every asset i
 produces is tagged `comgu:simulated-downstream` in DataHub, and labelled as such
 wherever Comgu shows it.
 
-**Not yet built:** the Shopify OAuth/webhook path, the persistence layer and web
-UI. Runs are currently driven headlessly. See [Status](#status).
+**Not yet built:** Shopify OAuth against a live development store. The webhook
+*receiving* path — HMAC verification, idempotency, topic allowlisting,
+normalization — is implemented and tested; what is missing is a Partner account
+and store to point it at. See [Status](#status).
 
 ---
 
@@ -173,10 +191,11 @@ DATAHUB_GMS_URL=http://localhost:8080 python -m seed.verify   # → COMMERCE_LAB
 Offline — no DataHub, no network:
 
 ```bash
-pytest packages -q
+pytest apps packages -q
 ```
 
-Rule engine, patch safety, planner guards and prompt-injection resistance: 45 tests.
+Rule engine, patch safety, planner guards, workflow transitions, webhook
+signature verification and prompt-injection resistance: **71 tests**.
 
 The commerce lab fails before remediation and passes after:
 
@@ -203,8 +222,9 @@ six findings return.
 
 ## Safety
 
-- HMAC-verified webhooks with timing-safe comparison; duplicate deliveries link
-  to the existing run *(pending — see Status)*
+- HMAC verified over raw request bytes with `compare_digest`; rejected
+  deliveries are recorded but never processed; duplicate deliveries collapse
+  onto the existing event; the topic list is closed
 - Patch sandbox: path and extension allowlists, no traversal, no symlink escape
   (including symlinked directories), size caps, isolated workspace
 - Validation runs only command **ids** from a fixed registry — there is no path
@@ -214,6 +234,11 @@ six findings return.
   rejected, falling back to the deterministic plan
 - Retrieved catalog text is untrusted input; a prompt-injection test asserts that
   a model obeying injected instructions still cannot get them executed
+- The approval gate is a property of the state graph: from `AWAITING_APPROVAL`
+  there is no edge to `PATCH_GENERATING`, and from `VALIDATION_FAILED` there is
+  no edge to a pull request
+- Approvals are bound to the plan and context checksums that were displayed, so
+  a decision cannot be replayed against a different plan
 - Failed validation blocks pull-request creation
 - Output is redacted before storage; no secrets in the repository
 
@@ -224,14 +249,20 @@ six findings return.
 | Area | State |
 | --- | --- |
 | DataHub context, lineage, blast radius | done, live |
-| Five deterministic checks | done, 13 tests |
-| Patch generation + validation | done, 21 tests |
+| Five deterministic checks | done |
+| Patch generation + validation | done |
 | GitHub pull requests | done, real PR opened |
 | DataHub write-back + verification | done, verified |
-| AI planner + guards | done, 11 tests |
+| AI planner + guards | done |
+| Persistence + 23-state workflow machine | done |
+| API, operator UI, judge demo mode | done, deployed |
+| Recovery worker | done |
+| Shopify webhook receive path | done, tested |
+| Shopify OAuth against a live store | needs a Partner account |
 | DataHub Skill contribution | written, PR pending |
-| Shopify OAuth + webhooks | not started |
-| Persistence, workflow state machine, web UI | not started |
+| Demo video | not recorded |
+
+**71 tests**, all offline.
 
 ---
 
