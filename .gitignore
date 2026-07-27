@@ -26,3 +26,6 @@ service-account*.json
 *.log
 workspaces/
 .DS_Store
+comgu.db
+comgu.db-wal
+comgu.db-shm

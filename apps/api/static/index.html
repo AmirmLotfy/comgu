@@ -1,0 +1,384 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comgu — commerce change control</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315171A'/><rect x='42' y='42' width='16' height='16' rx='3' fill='%23FF6B3D'/></svg>">
+<style>
+:root{
+  --ink:#15171A; --ivory:#F6F2E9; --signal:#FF6B3D; --proof:#57C7A5;
+  --context:#5967E8; --slate:#697078; --border:#D8D4CB; --white:#FFFFFF;
+  --critical:#D94B45; --warning:#D98A24;
+  --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;font-family:var(--sans);color:var(--ink);background:var(--white);
+  font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased}
+a{color:var(--context)}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--border);
+  background:var(--white);padding:.5rem .9rem;transition:.12s}
+button:hover:not(:disabled){border-color:var(--ink)}
+button:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,a:focus-visible{outline:2px solid var(--context);outline-offset:2px}
+.btn-primary{background:var(--signal);border-color:var(--signal);color:#fff;font-weight:600}
+.btn-primary:hover:not(:disabled){background:#e85b2f;border-color:#e85b2f}
+.btn-approve{background:var(--proof);border-color:var(--proof);color:#0a2b22;font-weight:600}
+.btn-reject{background:var(--white);border-color:var(--critical);color:var(--critical);font-weight:600}
+
+header{border-bottom:1px solid var(--border);padding:.85rem 1.25rem;display:flex;
+  align-items:center;gap:1rem;flex-wrap:wrap;position:sticky;top:0;background:var(--white);z-index:10}
+.brand{display:flex;align-items:center;gap:.6rem;font-weight:700;font-size:1.15rem;letter-spacing:-.02em}
+.mark{width:26px;height:26px;border-radius:7px;background:var(--ink);position:relative;flex:0 0 auto}
+.mark::after{content:"";position:absolute;inset:38% 38%;background:var(--signal);border-radius:2px}
+.tagline{color:var(--slate);font-size:.85rem;border-left:1px solid var(--border);padding-left:1rem}
+.spacer{flex:1}
+.env{font-family:var(--mono);font-size:.72rem;color:var(--slate);background:var(--ivory);
+  border:1px solid var(--border);border-radius:6px;padding:.25rem .5rem}
+
+.layout{display:grid;grid-template-columns:340px 1fr;min-height:calc(100vh - 60px)}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+aside{border-right:1px solid var(--border);background:var(--ivory);padding:1rem;overflow:auto}
+main{padding:1.25rem 1.5rem;max-width:1100px;overflow:auto}
+
+h2{font-size:1.35rem;margin:0 0 .25rem;letter-spacing:-.02em}
+h3{font-size:.78rem;text-transform:uppercase;letter-spacing:.09em;color:var(--slate);
+  margin:2rem 0 .6rem;font-weight:700}
+.muted{color:var(--slate)}
+.mono{font-family:var(--mono);font-size:.82rem}
+
+.run{display:block;width:100%;text-align:left;background:var(--white);margin-bottom:.5rem;padding:.7rem .8rem}
+.run.active{border-color:var(--ink);box-shadow:0 0 0 1px var(--ink)}
+.run .top{display:flex;justify-content:space-between;gap:.5rem;align-items:center}
+.run .id{font-family:var(--mono);font-size:.78rem;color:var(--slate)}
+
+.pill{display:inline-flex;align-items:center;gap:.3rem;font-size:.72rem;font-weight:700;
+  border-radius:999px;padding:.16rem .5rem;border:1px solid;white-space:nowrap}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.p-critical{color:var(--critical);border-color:var(--critical);background:#fdf2f1}
+.p-high{color:#a8471c;border-color:#e6a184;background:#fdf3ee}
+.p-medium{color:var(--warning);border-color:var(--warning);background:#fdf7ec}
+.p-low,.p-informational{color:var(--slate);border-color:var(--border);background:var(--ivory)}
+.p-ok{color:#1c6b56;border-color:var(--proof);background:#eefaf6}
+.p-run{color:var(--context);border-color:var(--context);background:#eef0fd}
+.p-fail{color:var(--critical);border-color:var(--critical);background:#fdf2f1}
+
+.card{border:1px solid var(--border);border-radius:12px;padding:1rem;margin-bottom:.75rem;background:var(--white)}
+.card.crit{border-left:4px solid var(--critical)}
+.card.high{border-left:4px solid #e6a184}
+.card.medium{border-left:4px solid var(--warning)}
+.card.low,.card.informational{border-left:4px solid var(--border)}
+
+table{width:100%;border-collapse:collapse;font-size:.87rem}
+th,td{text-align:left;padding:.45rem .6rem;border-bottom:1px solid var(--border);vertical-align:top}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--slate)}
+.scroll{overflow-x:auto;border:1px solid var(--border);border-radius:10px}
+.scroll table{border:0}
+
+pre{font-family:var(--mono);font-size:.78rem;background:var(--ink);color:#e8e6e1;
+  padding:.9rem;border-radius:10px;overflow-x:auto;margin:0;line-height:1.45}
+pre.light{background:var(--ivory);color:var(--ink);border:1px solid var(--border)}
+.diff .add{color:#7ee2bd}
+.diff .del{color:#ff9d8a}
+.diff .hdr{color:#8b93a7}
+
+.timeline{list-style:none;padding:0;margin:0;border-left:2px solid var(--border);margin-left:.4rem}
+.timeline li{position:relative;padding:.35rem 0 .35rem 1.1rem;font-size:.87rem}
+.timeline li::before{content:"";position:absolute;left:-5px;top:.75rem;width:8px;height:8px;
+  border-radius:50%;background:var(--border)}
+.timeline li.done::before{background:var(--proof)}
+.timeline li.fail::before{background:var(--critical)}
+.timeline .st{font-family:var(--mono);font-size:.78rem;font-weight:600}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:.3rem 1rem;font-size:.87rem}
+.kv dt{color:var(--slate)}
+.kv dd{margin:0;font-family:var(--mono);font-size:.82rem;word-break:break-all}
+
+.approve-bar{position:sticky;bottom:0;background:var(--white);border:1px solid var(--signal);
+  border-radius:12px;padding:1rem;display:flex;gap:.75rem;align-items:center;flex-wrap:wrap;
+  box-shadow:0 -2px 16px rgba(0,0,0,.06);margin-top:1rem}
+.banner{border-radius:10px;padding:.7rem .9rem;font-size:.88rem;margin-bottom:.75rem;border:1px solid}
+.b-sim{background:var(--ivory);border-color:var(--border);color:var(--slate)}
+.b-err{background:#fdf2f1;border-color:var(--critical);color:#8e2f2a}
+.empty{color:var(--slate);text-align:center;padding:3rem 1rem}
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--border);
+  border-top-color:var(--context);border-radius:50%;animation:s .7s linear infinite;vertical-align:-1px}
+@keyframes s{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.spin{animation:none}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand"><span class="mark" aria-hidden="true"></span>comgu</div>
+  <span class="tagline">Catch commerce changes before customers do.</span>
+  <span class="spacer"></span>
+  <span class="env" id="env">connecting…</span>
+  <button id="reset">Reset demo</button>
+  <button class="btn-primary" id="trigger">Trigger commerce change</button>
+</header>
+
+<div class="layout">
+  <aside>
+    <h3 style="margin-top:0">Runs</h3>
+    <div id="runs"><div class="empty">No runs yet.<br><span class="muted">Trigger a change to start.</span></div></div>
+  </aside>
+  <main id="detail">
+    <div class="empty">
+      <h2>Select or trigger a run</h2>
+      <p class="muted">Comgu traces a commerce change through DataHub lineage,<br>
+      checks every downstream surface, and proposes a validated fix.</p>
+    </div>
+  </main>
+</div>
+
+<script>
+const $ = (s,r=document)=>r.querySelector(s);
+const esc = s => String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+let current=null, timer=null;
+
+const SEV=["critical","high","medium","low","informational"];
+const TERMINAL=["COMPLETED","FAILED","CANCELLED","REJECTED","AWAITING_APPROVAL"];
+
+async function api(path,opts){
+  const r = await fetch(path,{headers:{"Content-Type":"application/json"},...opts});
+  if(!r.ok){ throw new Error((await r.text()).slice(0,300)); }
+  return r.json();
+}
+
+function statusPill(s){
+  if(s==="COMPLETED"||s==="DATAHUB_UPDATED") return `<span class="pill p-ok">${esc(s)}</span>`;
+  if(s==="FAILED"||s==="VALIDATION_FAILED"||s==="REJECTED") return `<span class="pill p-fail">${esc(s)}</span>`;
+  if(s==="AWAITING_APPROVAL") return `<span class="pill p-medium">${esc(s)}</span>`;
+  return `<span class="pill p-run">${esc(s)}</span>`;
+}
+
+async function loadEnv(){
+  try{
+    const h = await api("/health");
+    $("#env").textContent = `DataHub ${h.datahub_gms_url.replace(/^https?:\/\//,"")} · PR ${h.pr_live?"live":"dry-run"}`;
+  }catch{ $("#env").textContent="API unreachable"; }
+}
+
+async function loadRuns(){
+  const {runs} = await api("/api/runs");
+  const el = $("#runs");
+  if(!runs.length){ el.innerHTML=`<div class="empty">No runs yet.<br><span class="muted">Trigger a change to start.</span></div>`; return; }
+  el.innerHTML = runs.map(r=>`
+    <button class="run ${r.id===current?"active":""}" data-id="${r.id}">
+      <div class="top">
+        <span class="id">${esc(r.id.slice(0,8))}</span>
+        ${statusPill(r.status)}
+      </div>
+      <div style="margin-top:.35rem;font-size:.85rem">
+        ${r.finding_count} finding${r.finding_count===1?"":"s"}
+        ${r.severity?`· <span class="pill p-${esc(r.severity)}">${esc(r.severity)}</span>`:""}
+      </div>
+      <div class="muted" style="font-size:.75rem;margin-top:.2rem">${esc(r.trigger_type)} · ${new Date(r.created_at).toLocaleTimeString()}</div>
+    </button>`).join("");
+  el.querySelectorAll(".run").forEach(b=>b.onclick=()=>select(b.dataset.id));
+}
+
+function diffHtml(d){
+  return d.split("\n").map(l=>{
+    const c = l.startsWith("+")&&!l.startsWith("+++")?"add"
+            : l.startsWith("-")&&!l.startsWith("---")?"del"
+            : (l.startsWith("@@")||l.startsWith("---")||l.startsWith("+++"))?"hdr":"";
+    return c?`<span class="${c}">${esc(l)}</span>`:esc(l);
+  }).join("\n");
+}
+
+function renderDetail(d){
+  const f=d.findings||[], ctx=d.context, plan=d.plan;
+  let h = `<h2>Run ${esc(d.id.slice(0,12))} ${statusPill(d.status)}</h2>
+  <p class="muted" style="margin-top:.15rem">${esc(d.trigger_type)} trigger · ${f.length} findings${d.severity?` · max severity ${esc(d.severity)}`:""}</p>
+  <div class="banner b-sim"><strong>Simulated downstream systems.</strong> The transforms, contradictions, patches and tests are real; the commerce platforms behind them are a lab, not live integrations.</div>`;
+
+  if(d.failure_message) h+=`<div class="banner b-err"><strong>Failed.</strong> ${esc(d.failure_message)}</div>`;
+
+  // timeline
+  h+=`<h3>Timeline</h3><ul class="timeline">` + (d.timeline||[]).map(t=>
+    `<li class="${t.to==="FAILED"||t.to==="VALIDATION_FAILED"?"fail":"done"}">
+      <span class="st">${esc(t.to)}</span>
+      ${t.reason?`<div class="muted">${esc(t.reason)}</div>`:""}
+     </li>`).join("") + `</ul>`;
+
+  // DataHub context
+  if(ctx){
+    h+=`<h3>DataHub context</h3>
+    <div class="card">
+      <dl class="kv">
+        <dt>Source</dt><dd>${esc(ctx.root_urn)}</dd>
+        <dt>Lineage results</dt><dd>${ctx.lineage_edges} (max ${ctx.max_hops} hops)</dd>
+        <dt>Instance</dt><dd>${esc(ctx.datahub_gms_url)}</dd>
+        <dt>Snapshot</dt><dd>${esc(ctx.checksum.slice(0,16))}</dd>
+      </dl>
+      <h3 style="margin-top:1rem">MCP tool trace</h3>
+      <div class="scroll"><table><thead><tr><th>Tool</th><th>Duration</th><th>Result</th></tr></thead><tbody>
+      ${(ctx.tool_trace||[]).map(c=>`<tr><td class="mono">${esc(c.tool)}</td><td class="mono">${c.duration_ms}ms</td><td class="mono">${esc(c.summary)}</td></tr>`).join("")}
+      </tbody></table></div>
+      <p class="muted" style="font-size:.8rem;margin:.6rem 0 0">The blast radius below is derived from these calls. It is not hardcoded — with no lineage in DataHub, no rule can fire.</p>
+    </div>
+    <h3>Blast radius</h3>
+    <div class="scroll"><table><thead><tr><th>Asset</th><th>Channel</th><th>Criticality</th><th>Owner</th></tr></thead><tbody>
+    ${(ctx.assets||[]).filter(a=>a.entity_type==="DATASET"&&a.authority!=="authoritative").map(a=>`
+      <tr><td class="mono">${esc(a.name)}</td><td>${esc(a.channel||"—")}</td>
+      <td><span class="pill p-${esc(a.criticality)}">${esc(a.criticality)}</span></td>
+      <td>${a.owners&&a.owners.length?esc(a.owners[0].split(":").pop()):'<span class="pill p-fail">unowned</span>'}</td></tr>`).join("")}
+    </tbody></table></div>`;
+  }
+
+  // findings
+  if(f.length){
+    h+=`<h3>Findings</h3>` + f.map(x=>`
+      <div class="card ${esc(x.severity)}">
+        <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+          <span class="pill p-${esc(x.severity)}">${esc(x.severity)}</span>
+          <strong>${esc(x.title)}</strong>
+          <span class="mono muted">${esc(x.rule_code)}</span>
+        </div>
+        <p style="margin:.5rem 0">${esc(x.summary)}</p>
+        <dl class="kv">
+          <dt>Expected</dt><dd>${esc(JSON.stringify(x.expected_value))}</dd>
+          <dt>Observed</dt><dd>${esc(JSON.stringify(x.observed_value))}</dd>
+          <dt>Owner</dt><dd>${x.owner_reference?esc(x.owner_reference.primary):"none recorded"}</dd>
+          ${x.target_file?`<dt>Fix</dt><dd>${esc(x.remediation_template)} → ${esc(x.target_file)}</dd>`:""}
+        </dl>
+        <p style="margin:.6rem 0 0"><strong>Customer impact.</strong> ${esc(x.customer_impact)}</p>
+        <p style="margin:.3rem 0 0" class="muted"><strong>Risk.</strong> ${esc(x.business_risk)}</p>
+      </div>`).join("");
+  }
+
+  // plan
+  if(plan){
+    h+=`<h3>Remediation plan</h3><div class="card">
+      <p style="margin-top:0">${esc(plan.summary)}</p>
+      <p class="muted">${esc(plan.business_impact)}</p>
+      <div class="scroll"><table><thead><tr><th>#</th><th>Action</th><th>Template</th><th>Target</th><th>Risk</th></tr></thead><tbody>
+      ${(plan.proposed_actions||[]).map(a=>`<tr><td>${a.sequence_number}</td><td class="mono">${esc(a.action_type)}</td>
+        <td class="mono">${esc(a.remediation_template)}</td><td class="mono">${esc(a.target_reference||"—")}</td>
+        <td><span class="pill p-${esc(a.risk_level)}">${esc(a.risk_level)}</span></td></tr>`).join("")}
+      </tbody></table></div>
+      <dl class="kv" style="margin-top:.8rem">
+        <dt>Rollback</dt><dd style="font-family:var(--sans)">${esc(plan.rollback_plan)}</dd>
+        <dt>Source</dt><dd>${esc(plan.source)}${plan.provider?` (${esc(plan.provider)})`:""}</dd>
+        ${plan.rejected_reason?`<dt>Model plan rejected</dt><dd style="font-family:var(--sans)">${esc(plan.rejected_reason)}</dd>`:""}
+      </dl>
+    </div>`;
+  }
+
+  if(d.approval){
+    h+=`<h3>Approval</h3><div class="card">
+      <span class="pill ${d.approval.decision==="approved"?"p-ok":"p-fail"}">${esc(d.approval.decision)}</span>
+      by <strong>${esc(d.approval.decided_by)}</strong> (${esc(d.approval.role)}) at ${new Date(d.approval.at).toLocaleString()}
+      <dl class="kv" style="margin-top:.6rem">
+        <dt>Plan checksum</dt><dd>${esc(d.approval.plan_checksum.slice(0,24))}</dd>
+        <dt>Context checksum</dt><dd>${esc(d.approval.context_checksum.slice(0,24))}</dd>
+      </dl>
+      <p class="muted" style="font-size:.8rem;margin:.5rem 0 0">The decision is bound to these checksums, so it cannot be replayed against a different plan.</p>
+    </div>`;
+  }
+
+  if(d.patch){
+    h+=`<h3>Generated diff</h3><div class="card">
+      <p style="margin-top:0" class="muted">${d.patch.files.length} file(s) · checksum ${esc(d.patch.checksum.slice(0,16))}
+      ${d.patch.skipped.length?`· ${d.patch.skipped.length} skipped`:""}</p>
+      <pre class="diff">${diffHtml(d.patch.combined_diff)}</pre>
+      ${d.patch.skipped.length?`<p class="muted" style="margin:.6rem 0 0">Skipped: ${d.patch.skipped.map(s=>esc(s.rule+" — "+s.reason)).join("; ")}</p>`:""}
+    </div>`;
+  }
+
+  if(d.validation){
+    const v=d.validation, ok=v.status==="passed";
+    h+=`<h3>Validation</h3><div class="card">
+      <span class="pill ${ok?"p-ok":"p-fail"}">${esc(v.status)}</span>
+      <span class="mono muted">${v.summary.tests_passed??0} passed · ${v.summary.tests_failed??0} failed · ${v.duration_ms}ms</span>
+      ${(v.steps||[]).map(s=>`<pre class="light" style="margin-top:.7rem">$ ${esc(s.command_display)}\n${esc((s.stdout_redacted||"").trim().split("\n").slice(-6).join("\n"))}</pre>`).join("")}
+      ${ok?"":`<p class="muted" style="margin:.6rem 0 0">A failed validation blocks pull-request creation.</p>`}
+    </div>`;
+  }
+
+  if(d.pull_request){
+    const p=d.pull_request;
+    h+=`<h3>Pull request</h3><div class="card">
+      <span class="pill ${p.status==="open"?"p-ok":p.status==="dry_run"?"p-medium":"p-fail"}">${esc(p.status)}</span>
+      <span class="mono">${esc(p.branch)}</span>
+      ${p.url?`<p style="margin:.5rem 0 0"><a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url)}</a></p>`
+             :`<p class="muted" style="margin:.5rem 0 0">Dry run — no pull request was created. A URL is never fabricated.</p>`}
+      ${p.error?`<p class="muted">${esc(p.error)}</p>`:""}
+    </div>`;
+  }
+
+  if(d.writeback){
+    const w=d.writeback;
+    h+=`<h3>DataHub write-back</h3><div class="card">
+      <span class="pill ${w.status==="verified"?"p-ok":w.status==="partial"?"p-medium":"p-fail"}">${esc(w.status)}</span>
+      <div class="scroll" style="margin-top:.7rem"><table><thead><tr><th>Operation</th><th>Result</th></tr></thead><tbody>
+      ${(w.operations||[]).map(o=>`<tr><td class="mono">${esc(o.kind)}</td>
+        <td>${o.verified?'<span class="pill p-ok">verified</span>':o.ok?'<span class="pill p-medium">written, unverified</span>':`<span class="pill p-fail">failed</span>`}</td></tr>`).join("")}
+      </tbody></table></div>
+      ${w.document_urn?`<p class="mono" style="margin:.6rem 0 0">${esc(w.document_urn)}</p>`:""}
+      <p class="muted" style="font-size:.8rem;margin:.5rem 0 0">Every write is read back. An unverified write is reported as unverified, never assumed.</p>
+    </div>`;
+  }
+
+  if(d.status==="AWAITING_APPROVAL"){
+    h+=`<div class="approve-bar">
+      <div style="flex:1;min-width:220px"><strong>Approval required.</strong>
+      <div class="muted" style="font-size:.87rem">Nothing is patched, pushed or written to DataHub until you approve.</div></div>
+      <button class="btn-reject" id="rej">Reject</button>
+      <button class="btn-approve" id="app">Approve remediation</button>
+    </div>`;
+  }
+  $("#detail").innerHTML=h;
+
+  if(d.status==="AWAITING_APPROVAL"){
+    $("#app").onclick=async e=>{ e.target.disabled=true; e.target.innerHTML='<span class="spin"></span> Applying…';
+      await api(`/api/runs/${d.id}/approve`,{method:"POST",body:JSON.stringify({decided_by:"judge@comgu.site",role:"owner"})}); poll(); };
+    $("#rej").onclick=async e=>{ e.target.disabled=true;
+      await api(`/api/runs/${d.id}/reject`,{method:"POST",body:JSON.stringify({decided_by:"judge@comgu.site",role:"owner",reason:"rejected from the operator UI"})}); poll(); };
+  }
+}
+
+async function select(id){ current=id; await refresh(); startPolling(); }
+
+async function refresh(){
+  await loadRuns();
+  if(current){
+    try{ renderDetail(await api(`/api/runs/${current}`)); }
+    catch(e){ $("#detail").innerHTML=`<div class="banner b-err">${esc(e.message)}</div>`; }
+  }
+}
+
+function startPolling(){
+  clearInterval(timer);
+  timer=setInterval(async()=>{
+    if(!current) return;
+    const d=await api(`/api/runs/${current}`);
+    renderDetail(d); await loadRuns();
+    if(TERMINAL.includes(d.status)) clearInterval(timer);
+  },1500);
+}
+function poll(){ startPolling(); refresh(); }
+
+$("#trigger").onclick=async e=>{
+  e.target.disabled=true; e.target.innerHTML='<span class="spin"></span> Running…';
+  try{ const r=await api("/api/runs",{method:"POST",body:JSON.stringify({trigger_type:"demo"})}); await select(r.run_id); }
+  catch(err){ alert(err.message); }
+  finally{ e.target.disabled=false; e.target.textContent="Trigger commerce change"; }
+};
+
+$("#reset").onclick=async e=>{
+  if(!confirm("Reset the demo? This deletes all runs and restores the contradictory starting state.")) return;
+  e.target.disabled=true; e.target.innerHTML='<span class="spin"></span> Resetting…';
+  try{ await api("/api/demo/reset",{method:"POST"}); current=null;
+       $("#detail").innerHTML=`<div class="empty"><h2>Demo reset</h2><p class="muted">The contradictions are back. Trigger a change to start again.</p></div>`;
+       await loadRuns(); }
+  catch(err){ alert(err.message); }
+  finally{ e.target.disabled=false; e.target.textContent="Reset demo"; }
+};
+
+loadEnv(); loadRuns();
+</script>
+</body>
+</html>
