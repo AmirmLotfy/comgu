@@ -151,7 +151,7 @@ are present.
 - [ ] Record and publish the video (under 3 minutes, public)
 - [x] Open the Skill PR to `datahub-project/datahub-skills` — [#58](https://github.com/datahub-project/datahub-skills/pull/58)
 - [ ] File the quickstart issue on `datahub-project/datahub`
-- [ ] Tag a release (`v1.0.0`) on both repositories
-- [ ] Confirm the live demo and DataHub URLs respond
+- [x] Tag a release (`v1.0.0`) on both repositories
+- [x] Confirm the live demo and DataHub URLs respond
 - [ ] Complete the Devpost feedback survey (10 × $50 prizes)
 - [ ] Optional: register `comgu.site` and repoint DNS from the sslip.io hosts

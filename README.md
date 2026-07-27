@@ -210,7 +210,7 @@ pytest apps packages tests -q
 
 Rule engine, patch safety, planner guards, workflow transitions, webhook
 signature verification, OAuth open-redirect and state-replay resistance, and
-prompt-injection resistance: **163 tests**.
+prompt-injection resistance: **165 tests**.
 
 The commerce lab fails before remediation and passes after:
 
@@ -298,7 +298,7 @@ six findings return.
 | DataHub Skill contribution | [PR #58 open upstream](https://github.com/datahub-project/datahub-skills/pull/58) |
 | Demo video | not recorded |
 
-**163 tests**, all offline.
+**165 tests**, all offline.
 
 ---
 
