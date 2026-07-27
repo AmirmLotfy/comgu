@@ -1,0 +1,89 @@
+{
+  "status": "verified",
+  "document_urn": "urn:li:document:shared-27fe766c-32ec-445d-9b52-9c2af04b20d8",
+  "operations": [
+    {
+      "kind": "structured_properties",
+      "target": "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD),urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD),urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD),urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD),urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)",
+      "detail": {
+        "properties": [
+          "urn:li:structuredProperty:comgu.last_run",
+          "urn:li:structuredProperty:comgu.last_validation_at"
+        ]
+      },
+      "ok": true,
+      "verified": true,
+      "error": null
+    },
+    {
+      "kind": "tag",
+      "target": "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD),urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD),urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD),urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD),urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)",
+      "detail": {
+        "tag": "urn:li:tag:comgu:remediated"
+      },
+      "ok": true,
+      "verified": true,
+      "error": null
+    },
+    {
+      "kind": "document",
+      "target": "Comgu resolution: NH-BREW-PRO commerce parity (08b4644c)",
+      "detail": {
+        "length": 2697
+      },
+      "ok": true,
+      "verified": true,
+      "error": null
+    }
+  ],
+  "verification": {
+    "checked_entities": 5,
+    "properties_present": {
+      "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD)": [
+        "urn:li:structuredProperty:comgu.authority",
+        "urn:li:structuredProperty:comgu.channel",
+        "urn:li:structuredProperty:comgu.criticality",
+        "urn:li:structuredProperty:comgu.customer_facing",
+        "urn:li:structuredProperty:comgu.last_run",
+        "urn:li:structuredProperty:comgu.last_validation_at",
+        "urn:li:structuredProperty:comgu.pull_request_url"
+      ],
+      "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD)": [
+        "urn:li:structuredProperty:comgu.authority",
+        "urn:li:structuredProperty:comgu.channel",
+        "urn:li:structuredProperty:comgu.criticality",
+        "urn:li:structuredProperty:comgu.customer_facing",
+        "urn:li:structuredProperty:comgu.last_run",
+        "urn:li:structuredProperty:comgu.last_validation_at",
+        "urn:li:structuredProperty:comgu.pull_request_url"
+      ],
+      "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD)": [
+        "urn:li:structuredProperty:comgu.authority",
+        "urn:li:structuredProperty:comgu.channel",
+        "urn:li:structuredProperty:comgu.criticality",
+        "urn:li:structuredProperty:comgu.customer_facing",
+        "urn:li:structuredProperty:comgu.last_run",
+        "urn:li:structuredProperty:comgu.last_validation_at",
+        "urn:li:structuredProperty:comgu.pull_request_url"
+      ],
+      "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)": [
+        "urn:li:structuredProperty:comgu.authority",
+        "urn:li:structuredProperty:comgu.channel",
+        "urn:li:structuredProperty:comgu.criticality",
+        "urn:li:structuredProperty:comgu.customer_facing",
+        "urn:li:structuredProperty:comgu.last_run",
+        "urn:li:structuredProperty:comgu.last_validation_at",
+        "urn:li:structuredProperty:comgu.pull_request_url"
+      ],
+      "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)": [
+        "urn:li:structuredProperty:comgu.authority",
+        "urn:li:structuredProperty:comgu.channel",
+        "urn:li:structuredProperty:comgu.criticality",
+        "urn:li:structuredProperty:comgu.customer_facing",
+        "urn:li:structuredProperty:comgu.last_run",
+        "urn:li:structuredProperty:comgu.last_validation_at",
+        "urn:li:structuredProperty:comgu.pull_request_url"
+      ]
+    }
+  }
+}

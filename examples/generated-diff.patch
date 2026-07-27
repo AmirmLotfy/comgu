@@ -1,0 +1,56 @@
+# Comgu run 08b4644c4f5e47819c886cc1b5231e08
+# 5 files, checksum 8bf549aad45cbab8
+# Generated from registered remediation templates in an isolated workspace.
+
+--- a/feeds/google_merchant.transform.yaml
++++ b/feeds/google_merchant.transform.yaml
+@@ -16,5 +16,5 @@
+     title_from_catalog: true
+     # Pinned value. Does not follow the catalog — if the catalog price moves,
+     # this must be updated deliberately.
+-    price_override: "89.00"
++    price_override: "109.00"
+     availability_from_catalog: true
+
+--- a/bundles/brew_pro_bundle.yaml
++++ b/bundles/brew_pro_bundle.yaml
+@@ -14,4 +14,4 @@
+       - sku: NH-BREW-PRO
+         units_per_bundle: 1
+     # Must never exceed the sellable units of the scarcest component.
+-    committed_units: 5
++    committed_units: 3
+
+--- a/promotions/spring_sale.yaml
++++ b/promotions/spring_sale.yaml
+@@ -15,4 +15,4 @@
+     ends_at: "2026-08-31T23:59:59Z"
+     discount_pct: 15
+     # Must equal the current catalog price, or the advertised saving is wrong.
+-    price_basis: "89.00"
++    price_basis: "109.00"
+
+--- a/ai/manifest.config.json
++++ b/ai/manifest.config.json
+@@ -9,9 +9,9 @@
+       "sku": "NH-BREW-PRO",
+       "title_from_catalog": true,
+       "price_source": "pinned",
+-      "pinned_price": "89.00",
++      "pinned_price": "109.00",
+       "availability_source": "pinned",
+-      "pinned_available": 12,
++      "pinned_available": 3,
+       "return_window_source": "catalog"
+     }
+   ]
+
+--- a/policies/returns.yaml
++++ b/policies/returns.yaml
+@@ -10,5 +10,5 @@
+ policies:
+   - sku: NH-BREW-PRO
+     # Must match the authoritative return window recorded on the catalog.
+-    return_window_days: 14
++    return_window_days: 30
+     restocking_fee_pct: 0

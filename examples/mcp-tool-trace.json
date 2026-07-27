@@ -1,0 +1,132 @@
+[
+  {
+    "tool": "get_lineage",
+    "arguments": {
+      "urn": "urn:li:dataset:(urn:li:dataPlatform:shopify,northstar_home.catalog.products,PROD)",
+      "upstream": false,
+      "max_hops": 3,
+      "max_results": 100
+    },
+    "started_at": "2026-07-27T01:47:29.211198+00:00",
+    "duration_ms": 1254,
+    "ok": true,
+    "result_bytes": 26124,
+    "summary": "downstreams.total=10",
+    "error": null
+  },
+  {
+    "tool": "get_entities",
+    "arguments": {
+      "urns": [
+        "urn:li:dataset:(urn:li:dataPlatform:shopify,northstar_home.catalog.products,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)",
+        "urn:li:dataJob:(urn:li:dataFlow:(airflow,northstar_home.commerce_sync,PROD),ai_manifest_builder)",
+        "urn:li:dataJob:(urn:li:dataFlow:(airflow,northstar_home.commerce_sync,PROD),bundle_planner)",
+        "urn:li:dataJob:(urn:li:dataFlow:(airflow,northstar_home.commerce_sync,PROD),feed_builder)",
+        "urn:li:dataJob:(urn:li:dataFlow:(airflow,northstar_home.commerce_sync,PROD),policy_projector)",
+        "urn:li:dataJob:(urn:li:dataFlow:(airflow,northstar_home.commerce_sync,PROD),promo_engine)"
+      ]
+    },
+    "started_at": "2026-07-27T01:47:30.466216+00:00",
+    "duration_ms": 5506,
+    "ok": true,
+    "result_bytes": 32738,
+    "summary": "11 items",
+    "error": null
+  },
+  {
+    "tool": "add_structured_properties",
+    "arguments": {
+      "entity_urns": [
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)"
+      ],
+      "property_values": {
+        "urn:li:structuredProperty:comgu.last_run": [
+          "08b4644c4f5e47819c886cc1b5231e08"
+        ],
+        "urn:li:structuredProperty:comgu.last_validation_at": [
+          "2026-07-27T01:47:42.340649+00:00"
+        ]
+      }
+    },
+    "started_at": "2026-07-27T01:47:42.340785+00:00",
+    "duration_ms": 1549,
+    "ok": true,
+    "result_bytes": 89,
+    "summary": "success, message",
+    "error": null
+  },
+  {
+    "tool": "add_tags",
+    "arguments": {
+      "entity_urns": [
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)"
+      ],
+      "tag_urns": [
+        "urn:li:tag:comgu:remediated"
+      ]
+    },
+    "started_at": "2026-07-27T01:47:43.890886+00:00",
+    "duration_ms": 793,
+    "ok": true,
+    "result_bytes": 72,
+    "summary": "success, message",
+    "error": null
+  },
+  {
+    "tool": "save_document",
+    "arguments": {
+      "title": "Comgu resolution: NH-BREW-PRO commerce parity (08b4644c)",
+      "content": "Comgu run `08b4644c4f5e47819c886cc1b5231e08` resolved 6 commerce contradiction(s) caused by a change to `NH-BREW-PRO`.\n\n## What changed\n\n- Authoritative source: `urn:li:dataset:(urn:li:dataPlatform:shopify,northstar_home.catalog.products,PROD)`\n- Price: 109.00 USD\n- Sellable inventory: 3\n- Return window: 30 days\n\n## What was wrong\n\n- **Merchant feed advertises a stale price** (critical) on `urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)`\n  - expected `109.00`, observed `89.00`\n  - Shoppers see 89.00 in Shopping ads and free listings, then are charged 109.00 at checkout.\n- **Bundle can oversell available inventory** (critical) on `urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD)`\n  - expected `3`, observed `5`\n  - Up to 2 customers can complete checkout for stock that does not exist, and their orders must be cancelled after payment.\n- **Promotion is anchored to a stale price** (high) on `urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD)`\n  - expected `109.00`, observed `89.00`\n  - The advertised sale price of 75.65 is calculated from a price the store no longer charges.\n- **AI shopping manifest is stale** (high) on `urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)`\n  - expected `{'price': '109.00', 'available': 3}`, observed `{'price': '89.00', 'available': 12}`\n  - Third-party shopping agents quote these values directly to shoppers, so the wrong price and stock level are stated as fact before the customer ever reaches the store.\n- **Customer-facing asset has no owner in DataHub** (medium) on `urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)`\n  - expected `at least one owner`, observed `none`\n  - Errors on this surface persist until someone notices, because no team is accountable for it.\n- **Storefront return policy contradicts the authoritative policy** (medium) on `urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD)`\n  - expected `30`, observed `14`\n  - Customers are told they have 14 days to return this item when they actually have 30.\n\n## How it was resolved\n\nComgu generated a patch from registered remediation templates and validated it: 7 tests passed, 0 failed.\n\nApproved by amir@comgu.site. Comgu never mutates a downstream system without a recorded human approval.\n\n## For whoever comes next\n\nThese surfaces project from the authoritative catalog. If you change price, inventory or policy at the source, expect every asset listed above to need re-derivation \u2014 pinned values in their configs will not follow automatically.",
+      "document_type": "Decision",
+      "topics": [
+        "commerce",
+        "data-quality",
+        "comgu"
+      ],
+      "related_assets": [
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)"
+      ]
+    },
+    "started_at": "2026-07-27T01:47:44.684218+00:00",
+    "duration_ms": 1066,
+    "ok": true,
+    "result_bytes": 212,
+    "summary": "success, urn, message, author",
+    "error": null
+  },
+  {
+    "tool": "get_entities",
+    "arguments": {
+      "urns": [
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.bundles.bundle_availability,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.policy.storefront_policy,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:postgres,northstar_home.promotions.promotions_active,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.ai.shopping_manifest,PROD)",
+        "urn:li:dataset:(urn:li:dataPlatform:s3,northstar_home.feeds.google_merchant_feed,PROD)"
+      ]
+    },
+    "started_at": "2026-07-27T01:47:45.750729+00:00",
+    "duration_ms": 3075,
+    "ok": true,
+    "result_bytes": 24224,
+    "summary": "5 items",
+    "error": null
+  }
+]
