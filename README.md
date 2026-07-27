@@ -316,8 +316,10 @@ seven acceptance scenarios.
 
 This build also surfaced a reproducible defect in the DataHub quickstart —
 `ES_BULK_REFRESH_POLICY=WAIT_UNTIL` stalls the MAE consumer under ingestion load,
-silently under-indexing the catalog. Diagnosis, fix and measurements are in
-[`infra/README.md`](infra/README.md).
+silently under-indexing the catalog (428 of 1,267 entities). Diagnosis, fix and
+measurements are in [`infra/README.md`](infra/README.md).
+
+**Reported upstream: [datahub#18642](https://github.com/datahub-project/datahub/issues/18642)**
 
 ---
 

@@ -101,7 +101,8 @@ and rendered in the UI and the pull-request body.
    replays against already-written documents, hits version conflicts, and stalls
    permanently without committing an offset — silently under-indexing the catalog
    (we saw 428 of 1,267 entities). Diagnosis, fix and measurements in
-   [`infra/README.md`](infra/README.md). *Issue to file.*
+   [`infra/README.md`](infra/README.md).
+   **Issue: https://github.com/datahub-project/datahub/issues/18642**
 
 ---
 
@@ -151,7 +152,7 @@ are present.
 
 - [ ] Record and publish the video (under 3 minutes, public)
 - [x] Open the Skill PR to `datahub-project/datahub-skills` — [#58](https://github.com/datahub-project/datahub-skills/pull/58)
-- [ ] File the quickstart issue on `datahub-project/datahub`
+- [x] File the quickstart issue on `datahub-project/datahub` — [#18642](https://github.com/datahub-project/datahub/issues/18642)
 - [x] Tag a release (`v1.0.0`) on both repositories
 - [x] Confirm the live demo and DataHub URLs respond
 - [ ] Complete the Devpost feedback survey (10 × $50 prizes)
