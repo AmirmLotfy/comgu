@@ -77,25 +77,47 @@ def init_db() -> None:
     Base.metadata.create_all(engine())
 
 
+def schema_drift() -> list[str]:
+    """Differences between the models and the live database.
+
+    `create_all` adds missing *tables* but never adds a column to an existing
+    one, so a schema built that way silently lags the models as soon as a column
+    is added. Stamping such a database at head then tells Alembic there is
+    nothing to do, and the mismatch only surfaces at query time as
+    `no such column`.
+    """
+    from alembic.autogenerate import compare_metadata
+    from alembic.migration import MigrationContext
+
+    with engine().connect() as conn:
+        diff = compare_metadata(MigrationContext.configure(conn), Base.metadata)
+    return [str(d) for d in diff]
+
+
 def stamp_if_unversioned(alembic_ini: str = "alembic.ini") -> str | None:
     """Mark an already-created schema as being at the latest revision.
 
-    Returns the revision stamped, or None if the database was already
-    versioned. Idempotent, so a deploy can call it unconditionally.
+    Refuses when the schema does not actually match the models — stamping a
+    lagging database is worse than leaving it unversioned, because it hides the
+    problem from Alembic too.
     """
     from alembic import command
     from alembic.config import Config
-    from sqlalchemy import inspect
+    from sqlalchemy import inspect, text
 
     eng = engine()
-    with eng.connect() as conn:
-        rows = []
-        if inspect(eng).has_table("alembic_version"):
-            from sqlalchemy import text
+    if inspect(eng).has_table("alembic_version"):
+        with eng.connect() as conn:
+            if list(conn.execute(text("SELECT version_num FROM alembic_version"))):
+                return None
 
-            rows = list(conn.execute(text("SELECT version_num FROM alembic_version")))
-    if rows:
-        return None
+    drift = schema_drift()
+    if drift:
+        raise RuntimeError(
+            "refusing to stamp: the database does not match the models.\n  "
+            + "\n  ".join(drift[:6])
+            + "\nRebuild it with `alembic upgrade head` against an empty database."
+        )
 
     cfg = Config(alembic_ini)
     cfg.set_main_option("sqlalchemy.url", database_url())
