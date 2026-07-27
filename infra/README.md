@@ -99,6 +99,48 @@ committed before any value references them, or DataHub rejects the value with
 `Unexpected null value found for ... Structured Property Definition`; batching
 does not preserve ordering on its own.
 
+## Keeping the demo up unattended
+
+Judging runs for weeks after submission, so the host has to survive without
+anyone watching it.
+
+| Risk | Mitigation |
+| --- | --- |
+| VM reboot (host maintenance, kernel update) | All DataHub containers are `restart: unless-stopped`; `docker`, `comgu` and `caddy` are `systemd enabled`. **Verified by actually rebooting: both hosts were back in 75s with no manual step.** |
+| Accidental VM deletion | `deletionProtection: true` |
+| Host hardware failure | `automaticRestart: true`, `onHostMaintenance: MIGRATE` |
+| A service dies but the VM lives | `comgu-watchdog.timer` every 5 min |
+| Everything above fails | GCP uptime check every 5 min → email alert after 10 min down |
+
+`datahub-system-update-quickstart-1` is deliberately left at `restart: no` — it
+is a one-shot migration job that exits 0, and `unless-stopped` would restart it
+forever.
+
+### Watchdog
+
+```bash
+sudo cp infra/watchdog.sh /usr/local/bin/comgu-watchdog && sudo chmod +x /usr/local/bin/comgu-watchdog
+sudo cp infra/comgu-watchdog.{service,timer} /etc/systemd/system/
+sudo systemctl daemon-reload && sudo systemctl enable --now comgu-watchdog.timer
+```
+
+It is conservative on purpose: two consecutive failures before acting, at most
+one restart per service per 30 minutes, and DataHub is checked before Comgu
+because Comgu failing is usually a symptom of DataHub being down. An eager
+watchdog turns a slow start into a restart loop.
+
+```bash
+sudo tail -f /var/log/comgu-watchdog.log
+```
+
+### If it is genuinely down
+
+```bash
+gcloud compute instances start comgu-datahub --zone=europe-west1-b --project=goosecast
+# then, if DataHub did not come back:
+gcloud compute ssh comgu-datahub --zone=europe-west1-b --command='docker start $(docker ps -aq --filter name=datahub)'
+```
+
 ## Security
 
 `METADATA_SERVICE_AUTH_ENABLED=false` in the quickstart, so GMS on `:8080`

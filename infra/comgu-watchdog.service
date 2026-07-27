@@ -1,0 +1,7 @@
+[Unit]
+Description=Comgu demo watchdog
+After=docker.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/comgu-watchdog
