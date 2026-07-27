@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Security — Comgu</title>
+<meta name="description" content="How Comgu constrains an agent that writes code: registered templates, allowlisted paths, a closed command registry, and a human gate that is structural.">
+<link rel="stylesheet" href="/static/marketing/site.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315171A'/><rect x='42' y='42' width='16' height='16' rx='3' fill='%23FF6B3D'/></svg>">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>comgu</a>
+    <nav class="top" aria-label="Main">
+      <a href="/">Home</a>
+      <a href="/datahub">DataHub</a>
+      <a href="/security" aria-current="page">Security</a>
+      <a href="/open-source">Open source</a>
+      <a href="https://github.com/AmirmLotfy/comgu">GitHub</a>
+      <a class="cta" href="/app">Open the demo</a>
+    </nav>
+  </div>
+</header>
+<main>
+<section class="plain"><div class="wrap">
+  <p class="eyebrow">Security</p>
+  <h1>An agent that writes code, kept on a short leash</h1>
+  <p class="lede">
+    Comgu generates patches and opens pull requests. Everything below exists
+    because that is only safe if the agent's authority is narrow and enforced by
+    the system rather than by the prompt.
+  </p>
+</div></section>
+
+<section><div class="wrap">
+  <h2>The model cannot widen its own authority</h2>
+  <div class="grid g2">
+    <div class="card"><h3>Registered templates only</h3>
+      <p>The model selects from templates the patcher implements. An unregistered
+      name is rejected by schema validation and the deterministic plan is used
+      instead.</p></div>
+    <div class="card"><h3>Registered commands only</h3>
+      <p>Validation runs command <em>ids</em> from a fixed registry. There is no path
+      from a model, a finding, or a DataHub description to a shell string.</p></div>
+    <div class="card"><h3>Grounded in real findings</h3>
+      <p>Every proposed action must cite a finding Comgu produced deterministically.
+      A plan referencing an invented finding is discarded.</p></div>
+    <div class="card"><h3>Catalog text is untrusted input</h3>
+      <p>Descriptions and documentation are data, not instructions. A test asserts
+      that a model obeying injected instructions still cannot get an unregistered
+      template executed.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>The patch sandbox</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Constraint</th><th>Why</th></tr></thead>
+    <tbody>
+      <tr><td>Path and extension allowlists</td><td>Only the five commerce configs are writable</td></tr>
+      <tr><td>No traversal, no absolute paths</td><td><code>../</code> and <code>/etc/…</code> are refused before any write</td></tr>
+      <tr><td>No symlink escape</td><td>Including a symlinked <em>directory</em> along the path</td></tr>
+      <tr><td>The authoritative catalog is unpatchable</td><td>The source of truth is never a remediation target</td></tr>
+      <tr><td>Isolated workspace</td><td>The real checkout is never edited in place</td></tr>
+      <tr><td>Clean environment, timeout</td><td>Validation inherits no credentials</td></tr>
+      <tr><td>Redacted output</td><td>Anything resembling a token is masked before storage</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>The human gate is structural</h2>
+  <p class="lede">
+    Not a convention, and not a hidden button — a property of the state machine.
+  </p>
+<pre><code>AWAITING_APPROVAL  →  { APPROVED, REJECTED, CANCELLED }      <span class="c"># no PATCH_GENERATING</span>
+VALIDATION_FAILED  →  { AWAITING_APPROVAL, FAILED, CANCELLED } <span class="c"># no PULL_REQUEST_*</span></code></pre>
+  <div class="note proof" style="margin-top:1.25rem">
+    <strong><code>live:mutate</code> is a capability the judge role does not hold.</strong>
+    Whether an approval may open a real pull request is decided from the caller's
+    capabilities, then passed into the runner. A judge approving on an instance
+    configured for live pull requests still gets a dry run — and a worker resuming
+    a run has no approving principal, so it stays dry too.
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Webhooks and secrets</h2>
+  <div class="grid g2">
+    <div class="card"><h3>Signature verification</h3>
+      <p>HMAC-SHA256 over the <em>raw</em> body with a timing-safe compare. A
+      re-serialised payload fails, as it should. Rejected deliveries are recorded
+      and never processed.</p></div>
+    <div class="card"><h3>Idempotency</h3>
+      <p>Duplicate deliveries collapse onto the existing event rather than starting
+      a second workflow.</p></div>
+    <div class="card"><h3>Read-only Shopify scopes</h3>
+      <p>Comgu proposes pull requests; it never writes to a store. No write scope is
+      requested.</p></div>
+    <div class="card"><h3>Secrets are referenced, not stored</h3>
+      <p>The database holds <code>env:GITHUB_TOKEN</code>, never the value. A test
+      asserts no secret reaches persistence.</p></div>
+  </div>
+  <p class="muted" style="margin-top:1.5rem">
+    The security suite is a single file you can read in one sitting:
+    <a href="https://github.com/AmirmLotfy/comgu/blob/main/tests/security/test_security_suite.py">tests/security</a>.
+  </p>
+</div></section>
+</main>
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="brand" style="margin-bottom:.5rem"><span class="mark" aria-hidden="true"></span>comgu</div>
+      <div>Catch commerce changes before customers do.</div>
+      <div style="margin-top:.4rem">Apache-2.0 · Built for the DataHub Agent Hackathon</div>
+    </div>
+    <div>
+      <div><a href="/datahub">DataHub integration</a></div>
+      <div><a href="/security">Security</a></div>
+      <div><a href="/open-source">Open source</a></div>
+      <div><a href="https://github.com/AmirmLotfy/comgu">GitHub</a></div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

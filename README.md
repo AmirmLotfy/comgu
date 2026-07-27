@@ -32,6 +32,10 @@ Built for [Build with DataHub: The Agent Hackathon](https://datahub.devpost.com/
 | DataHub catalog | https://datahub.35-240-72-53.sslip.io — `judge` / `northstar-2026` |
 | Example pull request | [comgu-commerce-lab#1](https://github.com/AmirmLotfy/comgu-commerce-lab/pull/1) |
 
+The root is the marketing site; the product is at **`/app`**, behind the demo
+passphrase `northstar-2026` — the instance mutates a real catalog and a real
+repository, so it is not left anonymously open.
+
 Press **Trigger commerce change**, watch the run reach *Awaiting approval*,
 read the findings and the MCP tool trace, then **Approve**. Comgu patches five
 configuration files, runs the real parity suite, and writes the resolution back

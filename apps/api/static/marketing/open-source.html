@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open source — Comgu</title>
+<meta name="description" content="Comgu's architecture, what runs where, and the contributions made back to DataHub.">
+<link rel="stylesheet" href="/static/marketing/site.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315171A'/><rect x='42' y='42' width='16' height='16' rx='3' fill='%23FF6B3D'/></svg>">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>comgu</a>
+    <nav class="top" aria-label="Main">
+      <a href="/">Home</a><a href="/datahub">DataHub</a><a href="/security">Security</a>
+      <a href="/open-source" aria-current="page">Open source</a>
+      <a href="https://github.com/AmirmLotfy/comgu">GitHub</a>
+      <a class="cta" href="/app">Open the demo</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<section class="plain"><div class="wrap">
+  <p class="eyebrow">Open source</p>
+  <h1>Apache-2.0, and reproducible from a clean clone</h1>
+  <p class="lede">
+    Two repositories. One is the product; the other is the simulated commerce
+    ecosystem it patches — separate on purpose, because a tool that opens pull
+    requests against itself proves nothing.
+  </p>
+  <div class="buttons">
+    <a class="cta" href="https://github.com/AmirmLotfy/comgu">comgu</a>
+    <a class="cta ghost" href="https://github.com/AmirmLotfy/comgu-commerce-lab">comgu-commerce-lab</a>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Architecture</h2>
+<pre><code>packages/datahub/   MCP gateway, context builder, quality signals, write-back
+packages/rules/     five deterministic checks over observed output
+packages/patch/     constrained generation + registered-command validation
+packages/planner/   AI planner behind a validated schema
+packages/github/    pull requests
+apps/api/           workflow state machine, screens, auth, persistence
+apps/worker/        resumes runs stranded by a crash or a deploy
+seed/               Commerce Lab topology + emitter
+skill/              the DataHub Skill contributed upstream</code></pre>
+  <div class="grid g2" style="margin-top:1.5rem">
+    <div class="card"><h3>Deterministic where facts are concerned</h3>
+      <p>MCP calls are made from code, not chosen by a model. The model reads a
+      persisted snapshot and ranks registered templates. It never invents a value,
+      approves anything, or reaches a shell.</p></div>
+    <div class="card"><h3>Degrades rather than guesses</h3>
+      <p>If DataHub is unavailable the run fails visibly and says why. There is no
+      hardcoded lineage fallback — a confidently wrong blast radius is worse than
+      none.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Contributed back</h2>
+  <div class="grid g2">
+    <div class="card">
+      <span class="tag">datahub-skills</span>
+      <h3 style="margin-top:.6rem">datahub-commerce-change-impact</h3>
+      <p>
+        A vendor-neutral DataHub Skill teaching any agent to assess a commerce
+        change: resolve authority from the catalog rather than infer it, trace the
+        blast radius with an explicit hop count, compare output rather than
+        configuration, surface ownership gaps, refuse to guess when no source of
+        truth is marked, and stop before mutating.
+      </p>
+      <p style="margin-top:.6rem">
+        <a href="https://github.com/datahub-project/datahub-skills/pull/58">Pull request #58 →</a>
+      </p>
+    </div>
+    <div class="card">
+      <span class="tag">datahub</span>
+      <h3 style="margin-top:.6rem">A reproducible quickstart defect</h3>
+      <p>
+        <code>ES_BULK_REFRESH_POLICY=WAIT_UNTIL</code> makes every OpenSearch bulk
+        write block until the next index refresh. Under ingestion load the MAE
+        consumer is evicted mid-batch, replays against already-written documents,
+        hits version conflicts, and stalls permanently without committing an offset.
+        The catalog under-indexes silently — we measured 428 of 1,267 entities.
+      </p>
+      <p style="margin-top:.6rem">
+        Setting the policy to <code>NONE</code> drained a 1,748-message backlog in
+        140 seconds. Diagnosis, fix and measurements are in
+        <a href="https://github.com/AmirmLotfy/comgu/blob/main/infra/README.md">infra/README.md</a>.
+      </p>
+    </div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Verify it yourself</h2>
+  <p class="lede">Nothing here needs DataHub or a network connection.</p>
+<pre><code><span class="c"># rule engine, patch safety, planner guards, workflow, auth, prompt injection</span>
+pytest apps packages tests -q
+
+<span class="c"># the security suite on its own</span>
+pytest tests/security -q
+
+<span class="c"># the lab fails before remediation, passes after</span>
+cd ../comgu-commerce-lab &amp;&amp; pytest -q     <span class="c"># 6 failed, 1 passed</span></code></pre>
+  <p class="muted" style="margin-top:1rem">
+    With a DataHub instance, <code>python -m apps.api.scripts.golden_path
+    --assert-completed</code> runs the whole chain unmocked and fails the build if
+    any stage did not genuinely succeed.
+  </p>
+</div></section>
+
+<section><div class="wrap" style="text-align:center">
+  <h2>Read it, run it, break it</h2>
+  <div class="buttons" style="justify-content:center">
+    <a class="cta" href="/app">Open the demo</a>
+    <a class="cta ghost" href="https://github.com/AmirmLotfy/comgu">GitHub</a>
+  </div>
+</div></section>
+
+</main>
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="brand" style="margin-bottom:.5rem"><span class="mark" aria-hidden="true"></span>comgu</div>
+      <div>Catch commerce changes before customers do.</div>
+      <div style="margin-top:.4rem">Apache-2.0 · Built for the DataHub Agent Hackathon</div>
+    </div>
+    <div>
+      <div><a href="/datahub">DataHub integration</a></div>
+      <div><a href="/security">Security</a></div>
+      <div><a href="/open-source">Open source</a></div>
+      <div><a href="https://github.com/AmirmLotfy/comgu">GitHub</a></div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

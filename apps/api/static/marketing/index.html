@@ -1,0 +1,302 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Comgu — continuous integration for commerce operations</title>
+<meta name="description" content="Comgu catches commerce changes before customers do. It uses DataHub lineage to find every surface a price or inventory change broke, and proposes a validated fix.">
+<link rel="stylesheet" href="/static/marketing/site.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315171A'/><rect x='42' y='42' width='16' height='16' rx='3' fill='%23FF6B3D'/></svg>">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>comgu</a>
+    <nav class="top" aria-label="Main">
+      <a href="/" aria-current="page">Home</a>
+      <a href="/datahub">DataHub</a>
+      <a href="/security">Security</a>
+      <a href="/open-source">Open source</a>
+      <a href="https://github.com/AmirmLotfy/comgu">GitHub</a>
+      <a class="cta" href="/app">Open the demo</a>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="plain">
+  <div class="wrap hero">
+    <div>
+      <p class="eyebrow">Commerce reliability and change intelligence</p>
+      <h1>Catch commerce changes before customers do.</h1>
+      <p class="lede">
+        A merchant changes one price. Checkout updates. The product feed does not.
+        For the next few hours shoppers are shown one price and charged another —
+        and nobody is alerted, because every system involved is working correctly.
+        They are faithfully emitting values that were true yesterday.
+      </p>
+      <p class="lede">
+        <strong>Comgu is continuous integration for commerce operations.</strong>
+        It asks DataHub what depends on the change, checks every downstream
+        surface, and — only after a human approves — generates a validated fix.
+      </p>
+      <div class="buttons">
+        <a class="cta" href="/app">Open the demo</a>
+        <a class="cta ghost" href="https://github.com/AmirmLotfy/comgu">View the source</a>
+      </div>
+      <p class="muted" style="font-size:.9rem;margin-top:1rem">
+        No account, no card. Judge passphrase is in the submission.
+      </p>
+    </div>
+
+    <!-- The diagnostic visual is the real Commerce Lab topology: one
+         authoritative source, five projections, one of them unowned. -->
+    <figure>
+      <svg viewBox="0 0 460 330" role="img" width="100%"
+           aria-label="One Shopify catalog projects into five downstream surfaces; four disagree with it and one has no owner.">
+        <defs>
+          <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+            <path d="M0 0 L10 5 L0 10 z" fill="#D8D4CB"/>
+          </marker>
+        </defs>
+        <rect x="8" y="132" width="150" height="62" rx="11" fill="#15171A"/>
+        <text x="24" y="158" fill="#F6F2E9" font-size="13" font-weight="700" font-family="system-ui">Shopify catalog</text>
+        <text x="24" y="176" fill="#57C7A5" font-size="11.5" font-family="ui-monospace,monospace">$109.00 · 3 units</text>
+        <text x="24" y="122" fill="#697078" font-size="10" font-family="system-ui" letter-spacing="1">AUTHORITATIVE</text>
+
+        <g font-family="system-ui" font-size="11.5">
+          <!-- four contradicting surfaces + one correct -->
+          <g>
+            <line x1="158" y1="150" x2="252" y2="42" stroke="#D8D4CB" stroke-width="1.5" marker-end="url(#a)"/>
+            <rect x="256" y="20" width="196" height="44" rx="10" fill="#fff" stroke="#D94B45" stroke-width="1.5"/>
+            <text x="270" y="39" fill="#15171A" font-weight="650">Merchant feed</text>
+            <text x="270" y="55" fill="#D94B45" font-family="ui-monospace,monospace" font-size="11">$89.00 — stale</text>
+          </g>
+          <g>
+            <line x1="158" y1="155" x2="252" y2="98" stroke="#D8D4CB" stroke-width="1.5" marker-end="url(#a)"/>
+            <rect x="256" y="76" width="196" height="44" rx="10" fill="#fff" stroke="#D94B45" stroke-width="1.5"/>
+            <text x="270" y="95" fill="#15171A" font-weight="650">Bundle availability</text>
+            <text x="270" y="111" fill="#D94B45" font-family="ui-monospace,monospace" font-size="11">commits 5 of 3 — oversell</text>
+          </g>
+          <g>
+            <line x1="158" y1="163" x2="252" y2="154" stroke="#D8D4CB" stroke-width="1.5" marker-end="url(#a)"/>
+            <rect x="256" y="132" width="196" height="44" rx="10" fill="#fff" stroke="#D98A24" stroke-width="1.5"/>
+            <text x="270" y="151" fill="#15171A" font-weight="650">Promotion</text>
+            <text x="270" y="167" fill="#D98A24" font-family="ui-monospace,monospace" font-size="11">basis $89.00 — overstates</text>
+          </g>
+          <g>
+            <line x1="158" y1="172" x2="252" y2="210" stroke="#D8D4CB" stroke-width="1.5" marker-end="url(#a)"/>
+            <rect x="256" y="188" width="196" height="50" rx="10" fill="#fff" stroke="#D94B45" stroke-width="1.5"/>
+            <text x="270" y="207" fill="#15171A" font-weight="650">AI shopping manifest</text>
+            <text x="270" y="222" fill="#D94B45" font-family="ui-monospace,monospace" font-size="11">$89.00 · 12 units</text>
+            <text x="270" y="234" fill="#697078" font-size="10">no owner recorded</text>
+          </g>
+          <g>
+            <line x1="158" y1="180" x2="252" y2="272" stroke="#D8D4CB" stroke-width="1.5" marker-end="url(#a)"/>
+            <rect x="256" y="250" width="196" height="44" rx="10" fill="#fff" stroke="#D98A24" stroke-width="1.5"/>
+            <text x="270" y="269" fill="#15171A" font-weight="650">Storefront policy</text>
+            <text x="270" y="285" fill="#D98A24" font-family="ui-monospace,monospace" font-size="11">14-day returns — is 30</text>
+          </g>
+        </g>
+        <text x="8" y="318" fill="#697078" font-size="10.5" font-family="system-ui">
+          Discovered by traversing DataHub lineage — not a hardcoded diagram.
+        </text>
+      </svg>
+      <figcaption>
+        The Commerce Lab topology as Comgu finds it: five surfaces reached through
+        <code>get_lineage</code>, four disagreeing with the catalog.
+      </figcaption>
+    </figure>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Five things that break, every time</h2>
+    <p class="lede">Each is a deterministic check with its own evidence, severity and remediation template.</p>
+    <div class="grid g3">
+      <div class="card"><span class="tag">price_parity</span>
+        <h3 style="margin-top:.6rem">Price parity</h3>
+        <p>Every customer-visible price must equal the authoritative one — feeds, checkout, marketplaces, manifests.</p></div>
+      <div class="card"><span class="tag">inventory_safety</span>
+        <h3 style="margin-top:.6rem">Inventory safety</h3>
+        <p>No commitment may exceed sellable units. Overselling is the expensive one: the customer has already paid.</p></div>
+      <div class="card"><span class="tag">promotion_integrity</span>
+        <h3 style="margin-top:.6rem">Promotion integrity</h3>
+        <p>A discount anchored to a superseded price overstates the saving — regulated in most markets.</p></div>
+      <div class="card"><span class="tag">ai_commerce_freshness</span>
+        <h3 style="margin-top:.6rem">AI-commerce freshness</h3>
+        <p>Shopping agents quote manifests verbatim, with no human in the loop to catch a stale figure.</p></div>
+      <div class="card"><span class="tag">policy_consistency</span>
+        <h3 style="margin-top:.6rem">Policy consistency</h3>
+        <p>Advertised terms are the ones a customer can hold you to. A short window is a compliance problem.</p></div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>DataHub decides what is true</h2>
+    <p class="lede">
+      The easy way to fake this category is to show a lineage graph next to an
+      answer computed some other way. Comgu is built so it cannot.
+    </p>
+    <div class="grid g2">
+      <div>
+        <div class="note context">
+          <strong>Blast radius is lineage.</strong> Downstream assets come from
+          <code>get_lineage</code> rooted at the changed asset. There is no hardcoded
+          topology to fall back on — delete the edges and no rule can fire.
+        </div>
+        <div class="note context" style="margin-top:.75rem">
+          <strong>Authority is a catalog property.</strong> Which asset is the source
+          of truth is read from <code>comgu.authority</code>. Remove it and the engine
+          halts rather than assuming Shopify wins.
+        </div>
+        <div class="note context" style="margin-top:.75rem">
+          <strong>Severity is governance.</strong> Graded from
+          <code>comgu.criticality</code> and <code>comgu.customer_facing</code>.
+          Re-govern an asset and the same failure is graded differently.
+        </div>
+      </div>
+      <div>
+        <p class="muted" style="font-size:.9rem;margin:0 0 .5rem">
+          Real MCP calls from one run — persisted with the run and shown in the UI:
+        </p>
+<pre><code><span class="c">tool                          duration  result</span>
+get_lineage                    1227ms  downstreams.total=10
+get_entities                   5370ms  11 items
+graphql:dataset.assertions      152ms  0 assertions, 0 failing
+graphql:dataset.assertions      261ms  1 assertions, <span class="del">1 failing</span>
+add_structured_properties      1549ms  success
+add_tags                        793ms  success
+save_document                  1066ms  success</code></pre>
+        <p class="muted" style="font-size:.85rem;margin-top:.6rem">
+          Every argument, duration and result is recorded. The reasoning is
+          inspectable rather than asserted.
+        </p>
+      </div>
+    </div>
+    <p style="margin-top:1.5rem"><a href="/datahub">How DataHub is used, in detail →</a></p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Nothing happens without a human</h2>
+    <p class="lede">
+      Comgu stops at approval and shows its whole case first: findings, evidence,
+      blast radius, owners, the exact diff, the validation plan and the rollback.
+    </p>
+    <div class="grid g2">
+      <div class="card">
+        <h3>The approval is bound to what you saw</h3>
+        <p>
+          A decision records the plan checksum and the context snapshot checksum, so
+          it cannot be replayed against a different plan. Remediation then replays
+          the stored snapshot rather than re-querying DataHub — it acts on exactly
+          the graph that was approved.
+        </p>
+      </div>
+      <div class="card">
+        <h3>The gate is structural</h3>
+        <p>
+          From <code>AWAITING_APPROVAL</code> there is no edge to
+          <code>PATCH_GENERATING</code>, and from <code>VALIDATION_FAILED</code> there
+          is no edge to a pull request. Both are properties of the state machine,
+          pinned by test — not conventions someone can forget.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>A patch you can read, and a test that proves it</h2>
+    <p class="lede">
+      Corrections come from registered templates writing to allowlisted paths in an
+      isolated workspace. Comments explaining why a value exists survive the edit.
+    </p>
+<pre><code><span class="hdr">--- a/feeds/google_merchant.transform.yaml</span>
+<span class="hdr">+++ b/feeds/google_merchant.transform.yaml</span>
+<span class="hdr">@@ -16,5 +16,5 @@</span>
+     title_from_catalog: true
+     <span class="c"># Pinned value. Does not follow the catalog — if the catalog price moves,</span>
+     <span class="c"># this must be updated deliberately.</span>
+<span class="del">-    price_override: "89.00"</span>
+<span class="add">+    price_override: "109.00"</span>
+     availability_from_catalog: true</code></pre>
+    <div class="note proof" style="margin-top:1.25rem">
+      <strong>Validation is a real test run, not a claim.</strong>
+      The commerce parity suite fails <code>6 of 7</code> before remediation and
+      passes <code>7 of 7</code> after. A failing validation blocks the pull request
+      — there is no override.
+    </div>
+    <p style="margin-top:1.25rem" class="muted">
+      Every artefact above is generated output, reproducible from the repository:
+      <a href="https://github.com/AmirmLotfy/comgu/tree/main/examples">examples/</a>
+    </p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <h2>Open source, and honest about what is real</h2>
+    <div class="grid g2">
+      <div class="card">
+        <h3>Real</h3>
+        <ul class="tight">
+          <li>A self-hosted DataHub Core instance, ~1,270 entities</li>
+          <li>Every MCP call, the lineage graph, the governance metadata</li>
+          <li>The transformation code — contradictions are produced by executing it</li>
+          <li>The generated patches, the <code>pytest</code> run, the pull request</li>
+          <li>The catalog write-back, read back and verified</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>Simulated</h3>
+        <ul class="tight">
+          <li>The downstream commerce platforms themselves</li>
+          <li>There is no live Merchant Center account or promotion engine</li>
+          <li>Every lab asset is tagged <code>comgu:simulated-downstream</code> in DataHub</li>
+          <li>The product labels it wherever the output is shown</li>
+        </ul>
+      </div>
+    </div>
+    <p style="margin-top:1.5rem"><a href="/open-source">Architecture and contributions →</a></p>
+  </div>
+</section>
+
+<section>
+  <div class="wrap" style="text-align:center">
+    <h2>See it break, then fix itself</h2>
+    <p class="lede" style="margin:0 auto 1.6rem">
+      One price change, ten downstream assets, six findings, five files patched,
+      seven tests green — in about ninety seconds.
+    </p>
+    <div class="buttons" style="justify-content:center">
+      <a class="cta" href="/app">Open the demo</a>
+      <a class="cta ghost" href="https://github.com/AmirmLotfy/comgu">Read the source</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="brand" style="margin-bottom:.5rem"><span class="mark" aria-hidden="true"></span>comgu</div>
+      <div>Catch commerce changes before customers do.</div>
+      <div style="margin-top:.4rem">Apache-2.0 · Built for the DataHub Agent Hackathon</div>
+    </div>
+    <div>
+      <div><a href="/datahub">DataHub integration</a></div>
+      <div><a href="/security">Security</a></div>
+      <div><a href="/open-source">Open source</a></div>
+      <div><a href="https://github.com/AmirmLotfy/comgu">GitHub</a></div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DataHub integration — Comgu</title>
+<meta name="description" content="How Comgu uses DataHub lineage, structured properties, ownership and documents — and why removing them stops it working.">
+<link rel="stylesheet" href="/static/marketing/site.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315171A'/><rect x='42' y='42' width='16' height='16' rx='3' fill='%23FF6B3D'/></svg>">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>comgu</a>
+    <nav class="top" aria-label="Main">
+      <a href="/">Home</a>
+      <a href="/datahub" aria-current="page">DataHub</a>
+      <a href="/security">Security</a>
+      <a href="/open-source">Open source</a>
+      <a href="https://github.com/AmirmLotfy/comgu">GitHub</a>
+      <a class="cta" href="/app">Open the demo</a>
+    </nav>
+  </div>
+</header>
+<main>
+<section class="plain"><div class="wrap">
+  <p class="eyebrow">Integration</p>
+  <h1>DataHub decides what is true</h1>
+  <p class="lede">
+    Comgu does not have its own opinion about which commerce value is correct.
+    It asks the catalog, and if the catalog cannot answer, it stops.
+  </p>
+</div></section>
+
+<section><div class="wrap">
+  <h2>What is read, and what it decides</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>DataHub</th><th>Decides</th><th>If removed</th></tr></thead>
+    <tbody>
+      <tr><td><code>get_lineage</code></td><td>The blast radius — which surfaces project from the change</td><td>No assets found; every rule skips</td></tr>
+      <tr><td><code>comgu.authority</code></td><td>Which asset is the source of truth</td><td>Engine halts rather than guessing</td></tr>
+      <tr><td><code>comgu.criticality</code>, <code>comgu.customer_facing</code></td><td>How severely a failure is graded</td><td>Same failure, different severity</td></tr>
+      <tr><td>Ownership aspects</td><td>Who a correction routes to</td><td>Unowned surface becomes its own finding</td></tr>
+      <tr><td>Assertions</td><td>Corroborating quality evidence</td><td>Finding stands; evidence is thinner</td></tr>
+    </tbody>
+  </table></div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>The dependency is testable</h2>
+  <p class="lede">Two tests in the suite exist to prove this is not decoration.</p>
+<pre><code><span class="c">def test_engine_refuses_to_guess_without_datahub_authority():</span>
+    ctx = golden_context()
+    for asset in ctx.assets_by_urn.values():
+        asset.authority = "projection"        <span class="c"># strip the marker</span>
+    report = run_rules(ctx)
+    assert report.findings == []
+    assert "authoritative" in report.context_error
+
+<span class="c">def test_engine_finds_nothing_without_lineage():</span>
+    ctx = golden_context()
+    ctx.blast_radius.assets = []              <span class="c"># strip the graph</span>
+    report = run_rules(ctx)
+    assert all(r.status == RuleStatus.SKIPPED for r in report.results)</code></pre>
+  <div class="note context" style="margin-top:1.25rem">
+    You can run the same experiment against the live instance: delete the lineage
+    edges in DataHub, trigger a run, and watch the blast radius come back empty.
+    Restore them and the six findings return.
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>What is written back</h2>
+  <p class="lede">
+    After approval and a passing validation, the resolution goes back into the
+    catalog so the next person — or the next agent — inherits it.
+  </p>
+  <div class="grid g2">
+    <div class="card"><h3>A Decision document</h3>
+      <p><code>save_document</code> records what was wrong, what was done, the pull
+      request, and a note for whoever changes this next: these surfaces hold pinned
+      values that will not follow the catalog automatically.</p></div>
+    <div class="card"><h3>Structured properties</h3>
+      <p><code>comgu.last_run</code>, <code>comgu.last_validation_at</code>,
+      <code>comgu.pull_request_url</code> and <code>comgu.incident_status</code>,
+      written onto the affected assets themselves.</p></div>
+    <div class="card"><h3>A remediation tag</h3>
+      <p><code>comgu:remediated</code>, so the catalog shows at a glance which
+      surfaces have been through this.</p></div>
+    <div class="card"><h3>Read back, then reported</h3>
+      <p>Every write is read again. A write that cannot be verified is reported as
+      unverified — never assumed to have succeeded.</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Two things we found in DataHub Core</h2>
+  <div class="note">
+    <strong><code>get_lineage</code> defaults to one hop.</strong> Accepting the
+    default silently understates a blast radius — a feed three hops downstream is
+    just as customer-visible. Comgu sets the hop count explicitly.
+  </div>
+  <div class="note" style="margin-top:.75rem">
+    <strong><code>ES_BULK_REFRESH_POLICY=WAIT_UNTIL</code> stalls the indexer.</strong>
+    Every OpenSearch bulk write blocks until the next refresh — about 3 seconds
+    regardless of batch size. Under load the MAE consumer exceeds
+    <code>max.poll.interval.ms</code>, is evicted mid-batch, replays against
+    already-written documents, and stalls without committing an offset. The catalog
+    silently under-indexes. Diagnosis and fix are in the repository.
+  </div>
+</div></section>
+</main>
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="brand" style="margin-bottom:.5rem"><span class="mark" aria-hidden="true"></span>comgu</div>
+      <div>Catch commerce changes before customers do.</div>
+      <div style="margin-top:.4rem">Apache-2.0 · Built for the DataHub Agent Hackathon</div>
+    </div>
+    <div>
+      <div><a href="/datahub">DataHub integration</a></div>
+      <div><a href="/security">Security</a></div>
+      <div><a href="/open-source">Open source</a></div>
+      <div><a href="https://github.com/AmirmLotfy/comgu">GitHub</a></div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

@@ -19,9 +19,11 @@ Everything the Devpost form asks for, in one place.
 
 ### Judge test access
 
-No account or credit card required.
+No account or credit card required. The product is behind a demo
+passphrase because the instance mutates a real catalog and a real repo.
 
-- **Comgu:** https://app.35-240-72-53.sslip.io — open it and press *Trigger commerce change*
+- **Comgu:** https://app.35-240-72-53.sslip.io — the product is at `/app`,
+  passphrase `northstar-2026` (role: judge — sandbox only, cannot open a live PR)
 - **DataHub catalog:** https://datahub.35-240-72-53.sslip.io — `judge` / `northstar-2026`
 - **Example pull request:** https://github.com/AmirmLotfy/comgu-commerce-lab/pull/1
 

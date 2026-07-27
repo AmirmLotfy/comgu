@@ -741,9 +741,29 @@ def demo_reset(db: Session = Depends(get_session),
 
 app.include_router(screens.router)
 
+MARKETING_DIR = STATIC_DIR / "marketing"
+
 if STATIC_DIR.exists():
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
+    # Marketing at the root, product at /app. Judges land on an explanation
+    # rather than a run list they have no context for.
     @app.get("/")
-    def index() -> FileResponse:
+    def home() -> FileResponse:
+        return FileResponse(MARKETING_DIR / "index.html")
+
+    @app.get("/datahub")
+    def page_datahub() -> FileResponse:
+        return FileResponse(MARKETING_DIR / "datahub.html")
+
+    @app.get("/security")
+    def page_security() -> FileResponse:
+        return FileResponse(MARKETING_DIR / "security.html")
+
+    @app.get("/open-source")
+    def page_open_source() -> FileResponse:
+        return FileResponse(MARKETING_DIR / "open-source.html")
+
+    @app.get("/app")
+    def product() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")

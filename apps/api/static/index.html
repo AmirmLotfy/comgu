@@ -660,7 +660,13 @@ function viewSettings(d){
   </dl></div>`;
 }
 
-async function select(id){ current=id; SCREEN='runs'; await refresh(); startPolling(); }
+async function select(id){
+  current = id;
+  // Go through setScreen so the nav highlight follows — setting SCREEN directly
+  // leaves the previous section marked current while a run is displayed.
+  if (SCREEN !== "runs") setScreen("runs"); else await refresh();
+  startPolling();
+}
 
 async function refresh(){
   if(SCREEN === "runs") await loadRuns();
