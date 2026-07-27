@@ -16,13 +16,13 @@ from typing import Any
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
-from apps.api import shopify
+from apps.api import shopify, shopify_oauth
 from apps.api.db.models import (
     Approval,
     AuditLog,
@@ -505,6 +505,65 @@ async def _safe_json(raw: bytes) -> dict:
         return parsed if isinstance(parsed, dict) else {"payload": parsed}
     except Exception:
         return {}
+
+
+# --- Shopify OAuth -----------------------------------------------------------
+
+
+@app.get("/integrations/shopify/install")
+def shopify_install(shop: str) -> RedirectResponse:
+    """Begin the install. `shop` is attacker-controlled and validated first."""
+    key = os.environ.get("SHOPIFY_API_KEY", "")
+    base = os.environ.get("COMGU_PUBLIC_URL", "")
+    if not key or not base:
+        raise HTTPException(503, "Shopify app credentials are not configured")
+    try:
+        url = shopify_oauth.install_url(
+            shop, key, f"{base.rstrip('/')}/integrations/shopify/callback"
+        )
+    except shopify_oauth.OAuthError as e:
+        raise HTTPException(400, str(e)) from e
+    return RedirectResponse(url, status_code=302)
+
+
+@app.get("/integrations/shopify/callback")
+async def shopify_callback(request: Request, db: Session = Depends(get_session)):
+    params = dict(request.query_params)
+    shop = params.get("shop", "")
+    code = params.get("code", "")
+    state = params.get("state", "")
+
+    secret = os.environ.get("SHOPIFY_API_SECRET", "")
+    key = os.environ.get("SHOPIFY_API_KEY", "")
+    base = os.environ.get("COMGU_PUBLIC_URL", "")
+
+    if not shopify_oauth.valid_shop(shop):
+        raise HTTPException(400, "invalid shop domain")
+    if not shopify_oauth.verify_callback_hmac(params, secret):
+        raise HTTPException(401, "invalid callback signature")
+    if not shopify_oauth.consume_state(state, shop):
+        raise HTTPException(401, "invalid or expired state")
+
+    try:
+        token = await shopify_oauth.exchange_code(shop, code, key, secret)
+        hooks = await shopify_oauth.register_webhooks(shop, token, base)
+    except shopify_oauth.OAuthError as e:
+        raise HTTPException(502, str(e)) from e
+
+    org, shop_row = ensure_demo_tenant(db)
+    shop_row.shop_domain = shop
+    shop_row.status = "active"
+    shop_row.is_demo = False
+    db.add(
+        AuditLog(
+            organisation_id=org.id, shop_id=shop_row.id, actor_type="connector",
+            action="shopify.installed", resource_type="shop", resource_id=shop_row.id,
+            meta={"shop": shop, "webhooks": hooks},
+        )
+    )
+    db.commit()
+    # The token is never returned or logged.
+    return RedirectResponse("/", status_code=302)
 
 
 # --- demo --------------------------------------------------------------------

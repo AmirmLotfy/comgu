@@ -223,3 +223,80 @@ def test_rejected_webhook_is_recorded_but_creates_no_run(client):
 def test_approving_a_run_that_is_not_awaiting_is_refused(client):
     r = client.post("/api/runs/does-not-exist/approve", json={"decided_by": "x@y.z"})
     assert r.status_code == 404
+
+
+# --- Shopify OAuth -----------------------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        "evil.com",
+        "shop.myshopify.com.evil.com",
+        "https://shop.myshopify.com",
+        "shop.myshopify.com/../admin",
+        "",
+        "shop myshopify com",
+    ],
+)
+def test_open_redirect_shop_domains_are_refused(bad):
+    """`shop` is attacker-controlled; a loose check here is an open redirect."""
+    from apps.api.shopify_oauth import valid_shop
+
+    assert not valid_shop(bad)
+
+
+def test_legitimate_shop_domain_accepted():
+    from apps.api.shopify_oauth import valid_shop
+
+    assert valid_shop("northstar-home.myshopify.com")
+
+
+def test_install_url_targets_the_shop_and_carries_state():
+    from apps.api.shopify_oauth import install_url
+
+    url = install_url("northstar-home.myshopify.com", "key123", "https://app.example/cb")
+    assert url.startswith("https://northstar-home.myshopify.com/admin/oauth/authorize?")
+    assert "state=" in url and "client_id=key123" in url
+
+
+def test_install_url_refuses_a_hostile_shop():
+    from apps.api.shopify_oauth import OAuthError, install_url
+
+    with pytest.raises(OAuthError):
+        install_url("evil.com", "key123", "https://app.example/cb")
+
+
+def test_state_is_single_use():
+    from apps.api.shopify_oauth import consume_state, new_state
+
+    shop = "northstar-home.myshopify.com"
+    s = new_state(shop)
+    assert consume_state(s, shop)
+    assert not consume_state(s, shop), "a replayed state must be refused"
+
+
+def test_state_is_bound_to_its_shop():
+    from apps.api.shopify_oauth import consume_state, new_state
+
+    s = new_state("northstar-home.myshopify.com")
+    assert not consume_state(s, "attacker.myshopify.com")
+
+
+def test_callback_hmac_verification():
+    from apps.api.shopify_oauth import verify_callback_hmac
+
+    params = {"code": "abc", "shop": "n.myshopify.com", "state": "xyz", "timestamp": "1"}
+    message = "&".join(f"{k}={v}" for k, v in sorted(params.items()))
+    good = hmac.new(SECRET.encode(), message.encode(), hashlib.sha256).hexdigest()
+
+    assert verify_callback_hmac({**params, "hmac": good}, SECRET)
+    assert not verify_callback_hmac({**params, "hmac": "deadbeef"}, SECRET)
+    assert not verify_callback_hmac({**params, "shop": "other.myshopify.com", "hmac": good}, SECRET)
+
+
+def test_only_read_scopes_are_requested():
+    """Comgu proposes pull requests; it never writes to the store."""
+    from apps.api.shopify_oauth import SCOPES
+
+    assert "write" not in SCOPES

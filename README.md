@@ -195,7 +195,8 @@ pytest apps packages -q
 ```
 
 Rule engine, patch safety, planner guards, workflow transitions, webhook
-signature verification and prompt-injection resistance: **71 tests**.
+signature verification, OAuth open-redirect and state-replay resistance, and
+prompt-injection resistance: **84 tests**.
 
 The commerce lab fails before remediation and passes after:
 
@@ -257,12 +258,12 @@ six findings return.
 | Persistence + 23-state workflow machine | done |
 | API, operator UI, judge demo mode | done, deployed |
 | Recovery worker | done |
-| Shopify webhook receive path | done, tested |
-| Shopify OAuth against a live store | needs a Partner account |
+| Shopify OAuth + webhook receive path | done, tested |
+| Connected to a live development store | needs a Partner account |
 | DataHub Skill contribution | [PR #58 open upstream](https://github.com/datahub-project/datahub-skills/pull/58) |
 | Demo video | not recorded |
 
-**71 tests**, all offline.
+**84 tests**, all offline.
 
 ---
 
