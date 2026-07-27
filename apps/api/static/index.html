@@ -113,12 +113,25 @@ pre.light{background:var(--ivory);color:var(--ink);border:1px solid var(--border
   <div class="brand"><span class="mark" aria-hidden="true"></span>comgu</div>
   <span class="tagline">Catch commerce changes before customers do.</span>
   <span class="spacer"></span>
+  <span class="env" id="role" title="">—</span>
   <span class="env" id="env">connecting…</span>
   <button id="reset">Reset demo</button>
   <button class="btn-primary" id="trigger">Trigger commerce change</button>
 </header>
 
-<div class="layout">
+<div id="signin" hidden style="max-width:420px;margin:12vh auto;padding:0 1.25rem">
+  <h2 style="margin-bottom:.35rem">Sign in</h2>
+  <p class="muted" style="font-size:.9rem">This instance is a public sandbox. Judges: the passphrase is in the submission.</p>
+  <form id="signin-form" style="display:flex;gap:.5rem;margin-top:1rem">
+    <label for="pass" style="position:absolute;left:-9999px">Demo passphrase</label>
+    <input id="pass" type="password" autocomplete="current-password" placeholder="Demo passphrase"
+      style="flex:1;padding:.55rem .7rem;border:1px solid var(--border);border-radius:8px;font:inherit">
+    <button class="btn-primary" type="submit">Enter</button>
+  </form>
+  <p id="signin-err" class="muted" style="color:var(--critical);font-size:.85rem;min-height:1.2em"></p>
+</div>
+
+<div class="layout" id="app-layout">
   <aside>
     <h3 style="margin-top:0">Runs</h3>
     <div id="runs"><div class="empty">No runs yet.<br><span class="muted">Trigger a change to start.</span></div></div>
@@ -140,11 +153,73 @@ let current=null, timer=null;
 const SEV=["critical","high","medium","low","informational"];
 const TERMINAL=["COMPLETED","FAILED","CANCELLED","REJECTED","AWAITING_APPROVAL"];
 
-async function api(path,opts){
-  const r = await fetch(path,{headers:{"Content-Type":"application/json"},...opts});
-  if(!r.ok){ throw new Error((await r.text()).slice(0,300)); }
+let TOKEN = null, ME = null;
+
+async function api(path,opts={}){
+  const headers = {"Content-Type":"application/json", ...(opts.headers||{})};
+  if(TOKEN) headers["Authorization"] = `Bearer ${TOKEN}`;
+  const r = await fetch(path,{...opts,headers});
+  if(r.status===401){ signOut(); throw new Error("Session expired — sign in again."); }
+  if(!r.ok){
+    let msg;
+    try{ msg = (await r.json()).detail; }catch{ msg = (await r.text()).slice(0,300); }
+    throw new Error(msg || `HTTP ${r.status}`);
+  }
   return r.json();
 }
+
+function can(cap){ return !!(ME && ME.capabilities.includes(cap)); }
+
+function signOut(){
+  TOKEN = null; ME = null;
+  try{ localStorage.removeItem("comgu_token"); }catch{}
+  document.getElementById("signin").hidden = false;
+  document.getElementById("app-layout").style.display = "none";
+  document.querySelector("header").style.visibility = "hidden";
+}
+
+async function signIn(token){
+  TOKEN = token;
+  ME = await api("/api/auth/me");
+  try{ localStorage.setItem("comgu_token", token); }catch{}
+  document.getElementById("signin").hidden = true;
+  document.getElementById("app-layout").style.display = "";
+  document.querySelector("header").style.visibility = "";
+  applyRole();
+  await loadEnv(); await loadRuns();
+}
+
+function applyRole(){
+  const badge = document.getElementById("role");
+  badge.textContent = `${ME.role}${ME.pr_live_allowed ? "" : " · sandbox"}`;
+  badge.title = `capabilities: ${ME.capabilities.join(", ")}`;
+  // Controls the server would refuse are not offered.
+  document.getElementById("trigger").hidden = !can("run:trigger");
+  document.getElementById("reset").hidden = !can("demo:reset");
+}
+
+async function bootstrap(){
+  const url = new URL(location.href);
+  let token = url.searchParams.get("token");
+  if(token){ url.searchParams.delete("token"); history.replaceState({},"",url); }
+  if(!token){ try{ token = localStorage.getItem("comgu_token"); }catch{} }
+  if(token){
+    try{ await signIn(token); return; }catch{ /* fall through to sign-in */ }
+  }
+  signOut();
+}
+
+document.getElementById("signin-form").addEventListener("submit", async e => {
+  e.preventDefault();
+  const err = document.getElementById("signin-err"); err.textContent = "";
+  try{
+    const r = await fetch("/api/auth/demo-token",{method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify({passphrase:document.getElementById("pass").value})});
+    if(!r.ok){ err.textContent = r.status===401 ? "Incorrect passphrase." : "Demo access is not configured."; return; }
+    await signIn((await r.json()).token);
+  }catch(ex){ err.textContent = ex.message; }
+});
 
 function statusPill(s){
   if(s==="COMPLETED"||s==="DATAHUB_UPDATED") return `<span class="pill p-ok">${esc(s)}</span>`;
@@ -326,17 +401,19 @@ function renderDetail(d){
     h+=`<div class="approve-bar">
       <div style="flex:1;min-width:220px"><strong>Approval required.</strong>
       <div class="muted" style="font-size:.87rem">Nothing is patched, pushed or written to DataHub until you approve.</div></div>
-      <button class="btn-reject" id="rej">Reject</button>
-      <button class="btn-approve" id="app">Approve remediation</button>
+      ${can("run:approve")
+        ? `<button class="btn-reject" id="rej">Reject</button>
+           <button class="btn-approve" id="app">Approve remediation</button>`
+        : `<span class="muted">Your role cannot approve remediation.</span>`}
     </div>`;
   }
   $("#detail").innerHTML=h;
 
-  if(d.status==="AWAITING_APPROVAL"){
+  if(d.status==="AWAITING_APPROVAL" && can("run:approve")){
     $("#app").onclick=async e=>{ e.target.disabled=true; e.target.innerHTML='<span class="spin"></span> Applying…';
-      await api(`/api/runs/${d.id}/approve`,{method:"POST",body:JSON.stringify({decided_by:"judge@comgu.site",role:"owner"})}); poll(); };
+      await api(`/api/runs/${d.id}/approve`,{method:"POST",body:JSON.stringify({})}); poll(); };
     $("#rej").onclick=async e=>{ e.target.disabled=true;
-      await api(`/api/runs/${d.id}/reject`,{method:"POST",body:JSON.stringify({decided_by:"judge@comgu.site",role:"owner",reason:"rejected from the operator UI"})}); poll(); };
+      await api(`/api/runs/${d.id}/reject`,{method:"POST",body:JSON.stringify({reason:"rejected from the operator UI"})}); poll(); };
   }
 }
 
@@ -378,7 +455,7 @@ $("#reset").onclick=async e=>{
   finally{ e.target.disabled=false; e.target.textContent="Reset demo"; }
 };
 
-loadEnv(); loadRuns();
+bootstrap();
 </script>
 </body>
 </html>

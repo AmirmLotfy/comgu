@@ -236,8 +236,13 @@ async def advance_to_approval(db: Session, run: Run) -> Run:
 # --- phase 2: after approval -------------------------------------------------
 
 
-async def advance_after_approval(db: Session, run: Run) -> Run:
-    """Patch → validate → PR → write-back → COMPLETED."""
+async def advance_after_approval(db: Session, run: Run, pr_live: bool = False) -> Run:
+    """Patch → validate → PR → write-back → COMPLETED.
+
+    `pr_live` is decided by the caller's capabilities at approval time, not read
+    from the environment here. A judge-approved run is a dry run even on an
+    instance configured for live pull requests.
+    """
     actor = Actor(type="worker", id="comgu-worker")
     lab = bridge.lab_path()
     ctx = _rebuild_context(db, run)
@@ -318,7 +323,7 @@ async def advance_after_approval(db: Session, run: Run) -> Run:
                 repo=repo, lab_path=lab,
                 approver=approval.decided_by if approval else "unknown",
                 approved_at=approval.decided_at.isoformat() if approval else "",
-                dry_run=os.environ.get("COMGU_PR_LIVE", "").lower() not in ("1", "true"),
+                dry_run=not pr_live,
             )
             db.add(
                 PullRequest(

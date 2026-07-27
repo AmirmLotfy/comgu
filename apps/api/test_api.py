@@ -175,6 +175,8 @@ def test_normalize_extracts_commerce_values():
 def client(tmp_path, monkeypatch):
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path}/api.db")
     monkeypatch.setenv("SHOPIFY_WEBHOOK_SECRET", SECRET)
+    monkeypatch.setenv("COMGU_AUTH_SECRET", "test-signing-key")
+    monkeypatch.setenv("COMGU_DEMO_PASSPHRASE", "let-me-in")
     import apps.api.db.session as sess
 
     sess._engine = None
@@ -185,7 +187,18 @@ def client(tmp_path, monkeypatch):
         yield c
 
 
-def test_health(client):
+def token_for(role: str) -> str:
+    from apps.api.auth import issue_token
+
+    return issue_token(role, "org-demo", f"{role}@comgu.site")
+
+
+def auth_header(role: str) -> dict[str, str]:
+    return {"Authorization": f"Bearer {token_for(role)}"}
+
+
+def test_health_is_open(client):
+    """The only unauthenticated read — a load balancer needs it."""
     assert client.get("/health").json()["status"] == "ok"
 
 
@@ -217,11 +230,12 @@ def test_disallowed_topic_is_refused_even_when_signed(client):
 
 def test_rejected_webhook_is_recorded_but_creates_no_run(client):
     client.post("/webhooks/shopify/products/update", content=b'{"id":9}')
-    assert client.get("/api/runs").json()["runs"] == []
+    r = client.get("/api/runs", headers=auth_header("viewer"))
+    assert r.json()["runs"] == []
 
 
 def test_approving_a_run_that_is_not_awaiting_is_refused(client):
-    r = client.post("/api/runs/does-not-exist/approve", json={"decided_by": "x@y.z"})
+    r = client.post("/api/runs/does-not-exist/approve", json={}, headers=auth_header("owner"))
     assert r.status_code == 404
 
 
@@ -300,3 +314,113 @@ def test_only_read_scopes_are_requested():
     from apps.api.shopify_oauth import SCOPES
 
     assert "write" not in SCOPES
+
+
+# --- authentication and roles (PRD 12.2) -------------------------------------
+
+
+def test_anonymous_cannot_read_or_mutate(client):
+    for method, path in [
+        ("get", "/api/runs"), ("post", "/api/runs"),
+        ("post", "/api/demo/reset"), ("get", "/api/demo/status"),
+    ]:
+        r = getattr(client, method)(path)
+        assert r.status_code == 401, f"{method.upper()} {path} was open"
+
+
+def test_viewer_can_read_but_not_trigger(client):
+    assert client.get("/api/runs", headers=auth_header("viewer")).status_code == 200
+    r = client.post("/api/runs", json={}, headers=auth_header("viewer"))
+    assert r.status_code == 403
+    assert "run:trigger" in r.json()["detail"]
+
+
+def test_judge_can_drive_the_sandbox(client):
+    assert client.get("/api/runs", headers=auth_header("judge")).status_code == 200
+    # Judges may reset the demo; viewers may not.
+    assert client.post("/api/demo/reset", headers=auth_header("judge")).status_code == 200
+    assert client.post("/api/demo/reset", headers=auth_header("viewer")).status_code == 403
+
+
+def test_judge_never_holds_live_mutate(monkeypatch):
+    """The PRD says judges get 'no live mutations'. This is the enforcement.
+
+    Even with the instance configured for live pull requests, a judge-approved
+    run must stay a dry run.
+    """
+    from apps.api.auth import LIVE_MUTATE, capabilities_for, issue_token, pr_live_allowed, verify_token
+
+    monkeypatch.setenv("COMGU_AUTH_SECRET", "k")
+    monkeypatch.setenv("COMGU_PR_LIVE", "true")
+
+    assert LIVE_MUTATE not in capabilities_for("judge")
+    judge = verify_token(issue_token("judge", "o", "j@x"))
+    owner = verify_token(issue_token("owner", "o", "o@x"))
+    assert pr_live_allowed(judge) is False
+    assert pr_live_allowed(owner) is True
+
+
+def test_live_mutate_also_requires_the_instance_to_opt_in(monkeypatch):
+    from apps.api.auth import issue_token, pr_live_allowed, verify_token
+
+    monkeypatch.setenv("COMGU_AUTH_SECRET", "k")
+    monkeypatch.delenv("COMGU_PR_LIVE", raising=False)
+    owner = verify_token(issue_token("owner", "o", "o@x"))
+    assert pr_live_allowed(owner) is False
+
+
+def test_tampered_token_is_refused(monkeypatch):
+    from apps.api.auth import AuthError, issue_token, verify_token
+    import base64, json
+
+    monkeypatch.setenv("COMGU_AUTH_SECRET", "k")
+    good = issue_token("viewer", "o", "v@x")
+    body, _, sig = good.rpartition(".")
+    payload = json.loads(base64.urlsafe_b64decode(body + "=" * (-len(body) % 4)))
+    payload["role"] = "owner"                       # privilege escalation attempt
+    forged = base64.urlsafe_b64encode(
+        json.dumps(payload, separators=(",", ":"), sort_keys=True).encode()
+    ).decode().rstrip("=")
+    with pytest.raises(AuthError, match="bad signature"):
+        verify_token(f"{forged}.{sig}")
+
+
+def test_expired_token_is_refused(monkeypatch):
+    from apps.api.auth import AuthError, issue_token, verify_token
+
+    monkeypatch.setenv("COMGU_AUTH_SECRET", "k")
+    with pytest.raises(AuthError, match="expired"):
+        verify_token(issue_token("owner", "o", "o@x", ttl_seconds=-1))
+
+
+def test_token_signed_with_another_key_is_refused(monkeypatch):
+    from apps.api.auth import AuthError, issue_token, verify_token
+
+    monkeypatch.setenv("COMGU_AUTH_SECRET", "key-one")
+    stolen = issue_token("owner", "o", "o@x")
+    monkeypatch.setenv("COMGU_AUTH_SECRET", "key-two")
+    with pytest.raises(AuthError):
+        verify_token(stolen)
+
+
+def test_demo_token_endpoint_requires_the_passphrase(client):
+    assert client.post("/api/auth/demo-token", json={"passphrase": "wrong"}).status_code == 401
+    r = client.post("/api/auth/demo-token", json={"passphrase": "let-me-in"})
+    assert r.status_code == 200 and r.json()["role"] == "judge"
+
+
+def test_demo_token_endpoint_only_ever_issues_judge(client):
+    """Nothing holding live:mutate is issuable over HTTP."""
+    from apps.api.auth import LIVE_MUTATE
+
+    body = client.post("/api/auth/demo-token", json={"passphrase": "let-me-in"}).json()
+    assert body["role"] == "judge"
+    assert LIVE_MUTATE not in body["capabilities"]
+
+
+def test_every_role_is_defined_and_capabilities_are_known():
+    from apps.api.auth import ALL_CAPABILITIES, ROLES, ROLE_CAPABILITIES
+
+    assert set(ROLE_CAPABILITIES) == set(ROLES)
+    for role, caps in ROLE_CAPABILITIES.items():
+        assert caps <= ALL_CAPABILITIES, f"{role} claims an unknown capability"

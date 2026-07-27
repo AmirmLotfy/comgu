@@ -8,6 +8,7 @@ without an Approval row bound to the exact plan and context that were shown.
 from __future__ import annotations
 
 import asyncio
+import hmac
 import os
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
@@ -22,7 +23,7 @@ from pydantic import BaseModel
 from sqlalchemy import desc, func
 from sqlalchemy.orm import Session
 
-from apps.api import shopify, shopify_oauth
+from apps.api import auth, shopify, shopify_oauth
 from apps.api.db.models import (
     Approval,
     AuditLog,
@@ -260,11 +261,11 @@ def _drive_to_approval(run_id: str) -> None:
             asyncio.run(advance_to_approval(db, run))
 
 
-def _drive_after_approval(run_id: str) -> None:
+def _drive_after_approval(run_id: str, pr_live: bool) -> None:
     with session() as db:
         run = db.get(Run, run_id)
         if run:
-            asyncio.run(advance_after_approval(db, run))
+            asyncio.run(advance_after_approval(db, run, pr_live=pr_live))
 
 
 # --- routes ------------------------------------------------------------------
@@ -280,14 +281,50 @@ def health() -> dict[str, Any]:
     }
 
 
+class DemoTokenRequest(BaseModel):
+    passphrase: str
+
+
+@app.post("/api/auth/demo-token")
+def demo_token(body: DemoTokenRequest, db: Session = Depends(get_session)) -> dict[str, Any]:
+    """Mint a judge token.
+
+    Gated by a shared passphrase published with the submission. Only the `judge`
+    role is issuable over HTTP — anything with `live:mutate` is minted by CLI.
+    """
+    expected = os.environ.get("COMGU_DEMO_PASSPHRASE", "")
+    if not expected:
+        raise HTTPException(503, "demo access is not configured on this instance")
+    if not hmac.compare_digest(body.passphrase, expected):
+        raise HTTPException(401, "incorrect passphrase")
+
+    org, _ = ensure_demo_tenant(db)
+    token = auth.issue_token("judge", org.id, "judge@comgu.site")
+    db.add(
+        AuditLog(
+            organisation_id=org.id, actor_type="user", actor_user_id="judge@comgu.site",
+            action="auth.demo_token_issued", resource_type="auth", meta={"role": "judge"},
+        )
+    )
+    db.commit()
+    return {"token": token, "role": "judge", "capabilities": sorted(auth.capabilities_for("judge"))}
+
+
+@app.get("/api/auth/me")
+def whoami(who: auth.Principal = Depends(auth.principal)) -> dict[str, Any]:
+    return {**who.to_json(), "pr_live_allowed": auth.pr_live_allowed(who)}
+
+
 @app.get("/api/runs")
-def list_runs(limit: int = 50, db: Session = Depends(get_session)) -> dict[str, Any]:
+def list_runs(limit: int = 50, db: Session = Depends(get_session),
+               who: auth.Principal = Depends(auth.require(auth.RUN_READ))) -> dict[str, Any]:
     runs = db.query(Run).order_by(desc(Run.created_at)).limit(limit).all()
     return {"runs": [run_summary(db, r) for r in runs]}
 
 
 @app.get("/api/runs/{run_id}")
-def get_run(run_id: str, db: Session = Depends(get_session)) -> dict[str, Any]:
+def get_run(run_id: str, db: Session = Depends(get_session),
+            who: auth.Principal = Depends(auth.require(auth.RUN_READ))) -> dict[str, Any]:
     run = db.get(Run, run_id)
     if not run:
         raise HTTPException(404, "run not found")
@@ -300,7 +337,8 @@ class TriggerRequest(BaseModel):
 
 @app.post("/api/runs")
 def create_run(
-    body: TriggerRequest, tasks: BackgroundTasks, db: Session = Depends(get_session)
+    body: TriggerRequest, tasks: BackgroundTasks, db: Session = Depends(get_session),
+    who: auth.Principal = Depends(auth.require(auth.RUN_TRIGGER)),
 ) -> dict[str, Any]:
     org, shop = ensure_demo_tenant(db)
     change = bridge.load_catalog()
@@ -346,6 +384,7 @@ class DecisionRequest(BaseModel):
 def approve(
     run_id: str, body: DecisionRequest, tasks: BackgroundTasks,
     db: Session = Depends(get_session),
+    who: auth.Principal = Depends(auth.require(auth.RUN_APPROVE)),
 ) -> dict[str, Any]:
     run = db.get(Run, run_id)
     if not run:
@@ -368,7 +407,7 @@ def approve(
     db.add(
         Approval(
             run_id=run.id, remediation_plan_id=plan.id, decision="approved",
-            decided_by=body.decided_by, decided_by_role=body.role,
+            decided_by=who.subject, decided_by_role=who.role,
             decision_reason=body.reason,
             context_snapshot_checksum=snap.checksum, plan_checksum=plan.checksum,
         )
@@ -377,16 +416,20 @@ def approve(
     db.commit()
 
     transition(
-        db, run, Status.APPROVED, reason=f"approved by {body.decided_by}",
-        actor=Actor(type="user", id=body.decided_by),
+        db, run, Status.APPROVED, reason=f"approved by {who.subject} ({who.role})",
+        actor=Actor(type="user", id=who.subject),
     )
-    tasks.add_task(_drive_after_approval, run.id)
-    return {"run_id": run.id, "status": run.status}
+    # Whether this approval may open a real pull request is decided here, from
+    # the caller's capabilities — not inside the runner from an env var. A judge
+    # approving on a live-configured instance still gets a dry run.
+    tasks.add_task(_drive_after_approval, run.id, auth.pr_live_allowed(who))
+    return {"run_id": run.id, "status": run.status, "pr_live": auth.pr_live_allowed(who)}
 
 
 @app.post("/api/runs/{run_id}/reject")
 def reject(
-    run_id: str, body: DecisionRequest, db: Session = Depends(get_session)
+    run_id: str, body: DecisionRequest, db: Session = Depends(get_session),
+    who: auth.Principal = Depends(auth.require(auth.RUN_APPROVE)),
 ) -> dict[str, Any]:
     run = db.get(Run, run_id)
     if not run:
@@ -405,7 +448,7 @@ def reject(
     db.add(
         Approval(
             run_id=run.id, remediation_plan_id=plan.id if plan else "", decision="rejected",
-            decided_by=body.decided_by, decided_by_role=body.role,
+            decided_by=who.subject, decided_by_role=who.role,
             decision_reason=body.reason,
             context_snapshot_checksum=snap.checksum if snap else "",
             plan_checksum=plan.checksum if plan else "",
@@ -417,8 +460,8 @@ def reject(
 
     # Rejection preserves the evidence and the proposal.
     transition(
-        db, run, Status.REJECTED, reason=body.reason or f"rejected by {body.decided_by}",
-        actor=Actor(type="user", id=body.decided_by),
+        db, run, Status.REJECTED, reason=body.reason or f"rejected by {who.subject}",
+        actor=Actor(type="user", id=who.subject),
     )
     return {"run_id": run.id, "status": run.status}
 
@@ -511,7 +554,9 @@ async def _safe_json(raw: bytes) -> dict:
 
 
 @app.get("/integrations/shopify/install")
-def shopify_install(shop: str) -> RedirectResponse:
+def shopify_install(
+    shop: str, who: auth.Principal = Depends(auth.require(auth.CONNECTION_MANAGE))
+) -> RedirectResponse:
     """Begin the install. `shop` is attacker-controlled and validated first."""
     key = os.environ.get("SHOPIFY_API_KEY", "")
     base = os.environ.get("COMGU_PUBLIC_URL", "")
@@ -570,7 +615,8 @@ async def shopify_callback(request: Request, db: Session = Depends(get_session))
 
 
 @app.get("/api/demo/status")
-def demo_status(db: Session = Depends(get_session)) -> dict[str, Any]:
+def demo_status(db: Session = Depends(get_session),
+                who: auth.Principal = Depends(auth.require(auth.RUN_READ))) -> dict[str, Any]:
     try:
         change = bridge.load_catalog()
         projections = bridge.build_projections()
@@ -600,7 +646,8 @@ def demo_status(db: Session = Depends(get_session)) -> dict[str, Any]:
 
 
 @app.post("/api/demo/reset")
-def demo_reset(db: Session = Depends(get_session)) -> dict[str, Any]:
+def demo_reset(db: Session = Depends(get_session),
+               who: auth.Principal = Depends(auth.require(auth.DEMO_RESET))) -> dict[str, Any]:
     """Restore the contradictory starting state.
 
     Resets the lab checkout to origin/main (where the contradictions live) and

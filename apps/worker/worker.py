@@ -95,7 +95,9 @@ def sweep_once(verbose: bool = True) -> int:
                 print(f"[worker] resuming {run.id[:8]} from {run.status}")
             try:
                 if run.status in AFTER_APPROVAL:
-                    asyncio.run(advance_after_approval(db, run))
+                    # A resumed run never escalates to a live pull request:
+                    # the approving principal is not present to authorise it.
+                    asyncio.run(advance_after_approval(db, run, pr_live=False))
                 else:
                     asyncio.run(advance_to_approval(db, run))
                 handled += 1
