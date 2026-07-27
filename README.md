@@ -259,7 +259,7 @@ six findings return.
 | Recovery worker | done |
 | Shopify webhook receive path | done, tested |
 | Shopify OAuth against a live store | needs a Partner account |
-| DataHub Skill contribution | written, PR pending |
+| DataHub Skill contribution | [PR #58 open upstream](https://github.com/datahub-project/datahub-skills/pull/58) |
 | Demo video | not recorded |
 
 **71 tests**, all offline.
@@ -274,6 +274,8 @@ safely: resolve authority from the catalog, trace the blast radius, refuse to
 guess when no source of truth is marked, and stop before mutating. Written to
 `datahub-skills` conventions with reference material, a write-back template and
 seven acceptance scenarios.
+
+**Submitted upstream: [datahub-skills#58](https://github.com/datahub-project/datahub-skills/pull/58)**
 
 This build also surfaced a reproducible defect in the DataHub quickstart —
 `ES_BULK_REFRESH_POLICY=WAIT_UNTIL` stalls the MAE consumer under ingestion load,

@@ -84,7 +84,7 @@ and rendered in the UI and the pull-request body.
    surface ownership gaps, refuse to guess when no source of truth is marked, and
    stop before mutating. Written to `datahub-skills` conventions with reference
    material, a write-back template and seven acceptance scenarios.
-   *PR to `datahub-project/datahub-skills` — to open.*
+   **PR: https://github.com/datahub-project/datahub-skills/pull/58**
 
 2. **A reproducible quickstart defect.** DataHub's quickstart ships
    `ES_BULK_REFRESH_POLICY=WAIT_UNTIL`, which blocks every OpenSearch bulk write
@@ -142,7 +142,7 @@ are present.
 ## Before submitting
 
 - [ ] Record and publish the video (under 3 minutes, public)
-- [ ] Open the Skill PR to `datahub-project/datahub-skills`
+- [x] Open the Skill PR to `datahub-project/datahub-skills` — [#58](https://github.com/datahub-project/datahub-skills/pull/58)
 - [ ] File the quickstart issue on `datahub-project/datahub`
 - [ ] Tag a release (`v1.0.0`) on both repositories
 - [ ] Confirm the live demo and DataHub URLs respond
