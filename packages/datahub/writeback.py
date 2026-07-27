@@ -27,6 +27,7 @@ TAG_REMEDIATED = "urn:li:tag:comgu:remediated"
 SP_LAST_RUN = "urn:li:structuredProperty:comgu.last_run"
 SP_LAST_VALIDATION = "urn:li:structuredProperty:comgu.last_validation_at"
 SP_PR_URL = "urn:li:structuredProperty:comgu.pull_request_url"
+SP_INCIDENT_STATUS = "urn:li:structuredProperty:comgu.incident_status"
 
 
 @dataclass
@@ -76,6 +77,8 @@ def build_document(
     pr_url: str | None,
     validation_summary: dict[str, Any],
     approver: str,
+    incident_status: str | None = None,
+    incident_id: str | None = None,
 ) -> str:
     change = ctx.change
     auth = ctx.authoritative_asset()
@@ -106,6 +109,9 @@ def build_document(
     if pr_url:
         out.append("")
         out.append(f"Pull request: {pr_url}")
+    if incident_id:
+        out.append("")
+        out.append(f"Incident `{incident_id}` — status **{incident_status or 'unknown'}**.")
     out.append("")
     out.append(f"Approved by {approver}. Comgu never mutates a downstream system without a "
                "recorded human approval.")
@@ -127,6 +133,8 @@ async def write_back(
     approver: str,
     pr_url: str | None = None,
     assign_owner: str | None = None,
+    incident_status: str | None = None,
+    incident_id: str | None = None,
 ) -> WritebackResult:
     """Record the resolution in DataHub and verify it.
 
@@ -161,6 +169,10 @@ async def write_back(
     }
     if pr_url:
         values[SP_PR_URL] = [pr_url]
+    if incident_status:
+        # PRD 12.14 asks for incident status in the write-back. It was omitted
+        # while incidents did not exist as a first-class object.
+        values[SP_INCIDENT_STATUS] = [incident_status]
 
     op = WriteOperation(kind="structured_properties", target=",".join(targets),
                         detail={"properties": list(values)})
@@ -195,7 +207,10 @@ async def write_back(
 
     # 4. the decision document
     doc_title = f"Comgu resolution: {ctx.change.sku} commerce parity ({run_id[:8]})"
-    content = build_document(run_id, ctx, findings, pr_url, validation_summary, approver)
+    content = build_document(
+        run_id, ctx, findings, pr_url, validation_summary, approver,
+        incident_status=incident_status, incident_id=incident_id,
+    )
     op = WriteOperation(kind="document", target=doc_title, detail={"length": len(content)})
     try:
         doc = await dh.save_document(

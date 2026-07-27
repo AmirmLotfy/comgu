@@ -135,6 +135,20 @@ def structured_property_definitions() -> list[MetadataChangeProposalWrapper]:
             "Pull request opened by Comgu to correct this asset.",
             None,
         ),
+        (
+            T.SP_INCIDENT_STATUS,
+            "Comgu Incident Status",
+            "State of the merchant-facing incident covering this asset.",
+            [
+                ("open", "Detected, not yet triaged"),
+                ("investigating", "Being assessed"),
+                ("awaiting_approval", "Correction proposed, waiting on a human"),
+                ("fixing", "Approved correction in progress"),
+                ("validation_failed", "Correction did not pass validation"),
+                ("resolved", "Corrected and verified"),
+                ("dismissed", "Rejected or cancelled"),
+            ],
+        ),
     ]
 
     out = []

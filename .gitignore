@@ -29,3 +29,6 @@ workspaces/
 comgu.db
 comgu.db-wal
 comgu.db-shm
+
+# alembic scratch
+alembic/versions/__pycache__/

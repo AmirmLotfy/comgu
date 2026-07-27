@@ -22,6 +22,7 @@ from pathlib import Path
 
 from sqlalchemy.orm import Session
 
+from apps.api import incidents as incident_lifecycle
 from apps.api.db.models import (
     Approval,
     ContextSnapshot,
@@ -31,8 +32,10 @@ from apps.api.db.models import (
     PullRequest,
     RemediationPlan,
     Run,
+    RuleExecution,
     ValidationRun,
 )
+from apps.api.registry import active_rule_version
 from apps.api.workflow import Actor, Status, transition
 from packages.datahub.context_builder import build_run_context
 from packages.datahub.mcp_client import DataHubUnavailable, datahub_session
@@ -44,6 +47,22 @@ from packages.patch.validator import run_validation
 from packages.planner.planner import plan_remediation
 from packages.rules.context import RunContext
 from packages.rules.engine import run_rules
+
+
+def advance(db: Session, run: Run, to_status: str, **kwargs) -> Run:
+    """Transition the run, then move its incident to match.
+
+    Incident status is derived rather than set independently — the two describing
+    the same thing differently is the failure mode this avoids.
+    """
+    transition(db, run, to_status, **kwargs)
+    actor = kwargs.get("actor")
+    incident_lifecycle.follow_run(
+        db, run,
+        actor_type=actor.type if actor else "worker",
+        actor_user_id=actor.id if actor else None,
+    )
+    return run
 
 
 def gms_url() -> str:
@@ -114,10 +133,10 @@ async def advance_to_approval(db: Session, run: Run) -> Run:
     actor = Actor(type="worker", id="comgu-worker")
 
     if run.status == Status.RECEIVED:
-        transition(db, run, Status.NORMALIZED, reason="event normalized", actor=actor)
+        advance(db, run, Status.NORMALIZED, reason="event normalized", actor=actor)
 
     if run.status == Status.NORMALIZED:
-        transition(db, run, Status.CONTEXT_PENDING, actor=actor)
+        advance(db, run, Status.CONTEXT_PENDING, actor=actor)
 
     # --- DataHub context ---
     if run.status == Status.CONTEXT_PENDING:
@@ -130,7 +149,7 @@ async def advance_to_approval(db: Session, run: Run) -> Run:
                 trace = dh.trace.to_json()
         except DataHubUnavailable as e:
             # No hardcoded lineage fallback — the run fails visibly instead.
-            transition(db, run, Status.FAILED, reason=f"DataHub context failed: {e}", actor=actor)
+            advance(db, run, Status.FAILED, reason=f"DataHub context failed: {e}", actor=actor)
             return run
 
         assets = [_asset_dict(a) for a in ctx.assets_by_urn.values()]
@@ -146,7 +165,7 @@ async def advance_to_approval(db: Session, run: Run) -> Run:
         )
         db.add(snap)
         db.commit()
-        transition(
+        advance(
             db, run, Status.CONTEXT_RESOLVED,
             reason=f"{len(ctx.blast_radius.assets)} downstream assets from "
                    f"{ctx.blast_radius.lineage_edges} lineage results",
@@ -155,17 +174,38 @@ async def advance_to_approval(db: Session, run: Run) -> Run:
 
     # --- deterministic checks ---
     if run.status == Status.CONTEXT_RESOLVED:
-        transition(db, run, Status.CHECKS_RUNNING, actor=actor)
+        advance(db, run, Status.CHECKS_RUNNING, actor=actor)
         ctx = _rebuild_context(db, run)
         report = run_rules(ctx)
 
         if report.context_error:
-            transition(db, run, Status.FAILED, reason=report.context_error, actor=actor)
+            advance(db, run, Status.FAILED, reason=report.context_error, actor=actor)
             return run
+
+        # One row per rule that ran, whatever the outcome — PRD 12.8 wants the
+        # record of what executed, not only what failed.
+        execution_ids: dict[str, str] = {}
+        for result in report.results:
+            version_row = active_rule_version(db, result.rule_code, result.rule_version)
+            row = RuleExecution(
+                run_id=run.id,
+                rule_version_id=version_row.id if version_row else None,
+                rule_code=result.rule_code,
+                status=result.status.value,
+                finding_count=len(result.findings),
+                skip_reason=result.skip_reason,
+                error_message=result.error,
+                duration_ms=result.duration_ms,
+                completed_at=datetime.now(timezone.utc),
+            )
+            db.add(row)
+            db.flush()
+            execution_ids[result.rule_code] = row.id
 
         for f in report.findings:
             db.add(
                 FindingRow(
+                    rule_execution_id=execution_ids.get(f.rule_code),
                     organisation_id=run.organisation_id,
                     shop_id=run.shop_id,
                     run_id=run.id,
@@ -190,19 +230,30 @@ async def advance_to_approval(db: Session, run: Run) -> Run:
             )
         run.severity = report.max_severity.value
         db.commit()
-        transition(
+        advance(
             db, run, Status.CHECKS_COMPLETED,
             reason=f"{len(report.findings)} findings, max {report.max_severity.value}",
             actor=actor, meta=report.counts,
         )
 
         if not report.findings:
-            transition(db, run, Status.COMPLETED, reason="no contradictions found", actor=actor)
+            advance(db, run, Status.COMPLETED, reason="no contradictions found", actor=actor)
             return run
+
+        # The merchant-facing view of this run. Opened once findings exist so it
+        # always has something to describe; its status then follows the run.
+        incident = incident_lifecycle.open_for_run(db, run)
+        if incident:
+            incident_lifecycle.follow_run(db, run)
+            print(
+                f"[run {run.id[:8]}] incident {incident.id[:8]} opened "
+                f"({incident.severity}, {len(report.findings)} findings)",
+                flush=True,
+            )
 
     # --- plan ---
     if run.status == Status.CHECKS_COMPLETED:
-        transition(db, run, Status.REMEDIATION_PLANNING, actor=actor)
+        advance(db, run, Status.REMEDIATION_PLANNING, actor=actor)
         ctx = _rebuild_context(db, run)
         findings = run_rules(ctx).findings
         result = plan_remediation(ctx, findings)
@@ -225,7 +276,7 @@ async def advance_to_approval(db: Session, run: Run) -> Run:
         )
         db.add(row)
         db.commit()
-        transition(
+        advance(
             db, run, Status.AWAITING_APPROVAL,
             reason=f"plan v1 ready ({result.source})", actor=actor,
         )
@@ -249,7 +300,7 @@ async def advance_after_approval(db: Session, run: Run, pr_live: bool = False) -
     findings = run_rules(ctx).findings
 
     if run.status == Status.APPROVED:
-        transition(db, run, Status.PATCH_GENERATING, actor=actor)
+        advance(db, run, Status.PATCH_GENERATING, actor=actor)
 
     patch = None
     try:
@@ -267,14 +318,14 @@ async def advance_after_approval(db: Session, run: Run, pr_live: bool = False) -
                 )
             )
             db.commit()
-            transition(
+            advance(
                 db, run, Status.PATCH_GENERATED,
                 reason=f"{len(patch.files)} files patched", actor=actor,
             )
 
         # --- validation ---
         if run.status == Status.PATCH_GENERATED:
-            transition(db, run, Status.VALIDATION_RUNNING, actor=actor)
+            advance(db, run, Status.VALIDATION_RUNNING, actor=actor)
             validation = run_validation(patch.workspace, ["pytest"])
             db.add(
                 ValidationRun(
@@ -295,7 +346,7 @@ async def advance_after_approval(db: Session, run: Run, pr_live: bool = False) -
                 )
                 return run
 
-            transition(
+            advance(
                 db, run, Status.VALIDATED,
                 reason=f"{validation.summary.get('tests_passed', 0)} tests passed", actor=actor,
             )
@@ -312,7 +363,7 @@ async def advance_after_approval(db: Session, run: Run, pr_live: bool = False) -
         )
 
         if run.status == Status.VALIDATED and repo and patch:
-            transition(db, run, Status.PULL_REQUEST_CREATING, actor=actor)
+            advance(db, run, Status.PULL_REQUEST_CREATING, actor=actor)
             from packages.patch.validator import ValidationRun as VR, ValidationStep
 
             vr = VR(status=validation_row.status, duration_ms=validation_row.duration_ms)
@@ -333,14 +384,15 @@ async def advance_after_approval(db: Session, run: Run, pr_live: bool = False) -
                 )
             )
             db.commit()
-            transition(
+            advance(
                 db, run, Status.PULL_REQUEST_OPENED,
                 reason=pr.url or f"pull request {pr.status}", actor=actor,
             )
 
         # --- DataHub write-back ---
         if run.status in (Status.VALIDATED, Status.PULL_REQUEST_OPENED):
-            transition(db, run, Status.DATAHUB_WRITEBACK_PENDING, actor=actor)
+            advance(db, run, Status.DATAHUB_WRITEBACK_PENDING, actor=actor)
+            incident = incident_lifecycle.for_run(db, run.id)
             pr_row = (
                 db.query(PullRequest).filter(PullRequest.run_id == run.id)
                 .order_by(PullRequest.created_at.desc()).first()
@@ -351,6 +403,8 @@ async def advance_after_approval(db: Session, run: Run, pr_live: bool = False) -
                     validation_summary=validation_row.summary if validation_row else {},
                     approver=approval.decided_by if approval else "unknown",
                     pr_url=pr_row.external_pr_url if pr_row and pr_row.status == "open" else None,
+                    incident_status=(incident.status if incident else None),
+                    incident_id=(incident.id if incident else None),
                 )
                 wtrace = dhw.trace.to_json()
 
@@ -363,13 +417,13 @@ async def advance_after_approval(db: Session, run: Run, pr_live: bool = False) -
                 )
             )
             db.commit()
-            transition(
+            advance(
                 db, run, Status.DATAHUB_UPDATED,
                 reason=f"write-back {wb.status}", actor=actor,
             )
 
         if run.status == Status.DATAHUB_UPDATED:
-            transition(db, run, Status.COMPLETED, reason="run complete", actor=actor)
+            advance(db, run, Status.COMPLETED, reason="run complete", actor=actor)
 
     finally:
         if patch is not None:

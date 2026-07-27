@@ -63,6 +63,7 @@ SP_CHANNEL = "comgu.channel"
 SP_LAST_RUN = "comgu.last_run"
 SP_LAST_VALIDATION = "comgu.last_validation_at"
 SP_PR_URL = "comgu.pull_request_url"
+SP_INCIDENT_STATUS = "comgu.incident_status"
 
 
 def sp_urn(qualified_name: str) -> str:

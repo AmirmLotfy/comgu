@@ -17,6 +17,7 @@ from datetime import datetime, timezone
 from sqlalchemy import (
     JSON,
     Boolean,
+    Index,
     DateTime,
     Float,
     ForeignKey,
@@ -186,12 +187,19 @@ class ContextSnapshot(Base):
 
 class Finding(Base):
     __tablename__ = "findings"
+    __table_args__ = (
+        Index("ix_findings_run_severity", "run_id", "severity"),
+        Index("ix_findings_shop_status_severity", "shop_id", "status", "severity"),
+    )
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
     organisation_id: Mapped[str] = mapped_column(String(32), index=True)
     shop_id: Mapped[str] = mapped_column(String(32), index=True)
     run_id: Mapped[str] = mapped_column(ForeignKey("runs.id"), index=True)
     rule_code: Mapped[str] = mapped_column(String(120), index=True)
     rule_version: Mapped[int] = mapped_column(Integer, default=1)
+    rule_execution_id: Mapped[str | None] = mapped_column(
+        ForeignKey("rule_executions.id"), index=True
+    )
     status: Mapped[str] = mapped_column(String(30), default="open")
     severity: Mapped[str] = mapped_column(String(20), index=True)
     title: Mapped[str] = mapped_column(String(255))
@@ -311,6 +319,7 @@ class AuditLog(Base):
     """Append-only. Never updated or deleted by application code."""
 
     __tablename__ = "audit_logs"
+    __table_args__ = (Index("ix_audit_org_created", "organisation_id", "created_at"),)
     id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
     organisation_id: Mapped[str] = mapped_column(String(32), index=True)
     shop_id: Mapped[str | None] = mapped_column(String(32))
@@ -321,3 +330,207 @@ class AuditLog(Base):
     resource_id: Mapped[str | None] = mapped_column(String(32))
     meta: Mapped[dict] = mapped_column(JSON, default=dict)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now, index=True)
+
+
+# --- membership (PRD 27.3) ---------------------------------------------------
+
+
+class Membership(Base):
+    """Joins a user to an organisation with a role."""
+
+    __tablename__ = "memberships"
+    __table_args__ = (UniqueConstraint("organisation_id", "user_id"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    organisation_id: Mapped[str] = mapped_column(ForeignKey("organisations.id"), index=True)
+    user_id: Mapped[str] = mapped_column(ForeignKey("users.id"), index=True)
+    role: Mapped[str] = mapped_column(String(30), default="viewer")
+    status: Mapped[str] = mapped_column(String(20), default="active")
+    invited_by_user_id: Mapped[str | None] = mapped_column(String(32))
+    joined_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --- connectors (PRD 27.5-27.8) ----------------------------------------------
+
+
+class Connector(Base, TimestampMixin):
+    """A configured integration.
+
+    Secrets are never stored here — `secret_reference` names where the value
+    lives, and `last_error_message` is redacted before it is written.
+    """
+
+    __tablename__ = "connectors"
+    __table_args__ = (Index("ix_connectors_org_type_status", "organisation_id", "connector_type", "status"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    organisation_id: Mapped[str] = mapped_column(ForeignKey("organisations.id"), index=True)
+    shop_id: Mapped[str | None] = mapped_column(ForeignKey("shops.id"))
+    connector_type: Mapped[str] = mapped_column(String(30))  # shopify | datahub | github
+    name: Mapped[str] = mapped_column(String(160))
+    status: Mapped[str] = mapped_column(String(30), default="pending")
+    configuration: Mapped[dict] = mapped_column(JSON, default=dict)
+    secret_reference: Mapped[str | None] = mapped_column(Text)
+    last_verified_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_error_code: Mapped[str | None] = mapped_column(String(100))
+    last_error_message: Mapped[str | None] = mapped_column(Text)
+
+
+class ShopifyConnection(Base):
+    __tablename__ = "shopify_connections"
+    connector_id: Mapped[str] = mapped_column(ForeignKey("connectors.id"), primary_key=True)
+    shop_id: Mapped[str | None] = mapped_column(ForeignKey("shops.id"))
+    shopify_shop_domain: Mapped[str] = mapped_column(String(255), unique=True)
+    shopify_shop_gid: Mapped[str | None] = mapped_column(String(255))
+    api_version: Mapped[str] = mapped_column(String(20), default="2026-01")
+    scopes: Mapped[list] = mapped_column(JSON, default=list)
+    # The token itself lives in the environment/secret manager, never here.
+    token_reference: Mapped[str | None] = mapped_column(Text)
+    installed_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    uninstalled_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_webhook_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class DataHubConnection(Base):
+    __tablename__ = "datahub_connections"
+    connector_id: Mapped[str] = mapped_column(ForeignKey("connectors.id"), primary_key=True)
+    gms_url: Mapped[str] = mapped_column(Text)
+    mcp_transport: Mapped[str] = mapped_column(String(20), default="stdio")
+    mcp_server_version: Mapped[str | None] = mapped_column(String(40))
+    datahub_version: Mapped[str | None] = mapped_column(String(40))
+    mutation_enabled: Mapped[bool] = mapped_column(Boolean, default=False)
+    service_account_name: Mapped[str | None] = mapped_column(String(160))
+    secret_reference: Mapped[str | None] = mapped_column(Text)
+    last_read_test_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    last_write_test_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class GitHubConnection(Base):
+    __tablename__ = "github_connections"
+    connector_id: Mapped[str] = mapped_column(ForeignKey("connectors.id"), primary_key=True)
+    installation_id: Mapped[int | None] = mapped_column(Integer)
+    account_login: Mapped[str | None] = mapped_column(String(255))
+    repository_owner: Mapped[str | None] = mapped_column(String(255))
+    repository_name: Mapped[str | None] = mapped_column(String(255))
+    default_branch: Mapped[str] = mapped_column(String(255), default="main")
+    repository_allowlist: Mapped[list] = mapped_column(JSON, default=list)
+    dry_run_enabled: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+# --- rule registry (PRD 27.15-27.18) -----------------------------------------
+
+
+class RuleDefinition(Base):
+    """A logical rule. Projected from ALL_RULES so code stays authoritative."""
+
+    __tablename__ = "rule_definitions"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    code: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(180))
+    description: Mapped[str] = mapped_column(Text)
+    category: Mapped[str] = mapped_column(String(40))
+    default_severity: Mapped[str] = mapped_column(String(20))
+    is_system_rule: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class RuleVersion(Base):
+    __tablename__ = "rule_versions"
+    __table_args__ = (UniqueConstraint("rule_definition_id", "version"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    rule_definition_id: Mapped[str] = mapped_column(ForeignKey("rule_definitions.id"), index=True)
+    version: Mapped[int] = mapped_column(Integer)
+    implementation_reference: Mapped[str] = mapped_column(Text)
+    remediation_templates: Mapped[list] = mapped_column(JSON, default=list)
+    checksum: Mapped[str] = mapped_column(String(64), default="")
+    active_from: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    retired_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+class RuleExecution(Base):
+    """One rule, one run. Required by PRD 12.8 to record what actually ran."""
+
+    __tablename__ = "rule_executions"
+    __table_args__ = (Index("ix_rule_executions_run_status", "run_id", "status"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    run_id: Mapped[str] = mapped_column(ForeignKey("runs.id"), index=True)
+    rule_version_id: Mapped[str | None] = mapped_column(ForeignKey("rule_versions.id"))
+    rule_code: Mapped[str] = mapped_column(String(120), index=True)
+    status: Mapped[str] = mapped_column(String(20))
+    finding_count: Mapped[int] = mapped_column(Integer, default=0)
+    skip_reason: Mapped[str | None] = mapped_column(Text)
+    error_message: Mapped[str | None] = mapped_column(Text)
+    duration_ms: Mapped[int] = mapped_column(Integer, default=0)
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+
+
+# --- incidents (PRD 27.31-27.33) ---------------------------------------------
+
+
+class Incident(Base, TimestampMixin):
+    """A merchant-facing container for the findings of one run."""
+
+    __tablename__ = "incidents"
+    __table_args__ = (Index("ix_incidents_org_status_severity", "organisation_id", "status", "severity"),)
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    organisation_id: Mapped[str] = mapped_column(ForeignKey("organisations.id"), index=True)
+    shop_id: Mapped[str] = mapped_column(ForeignKey("shops.id"), index=True)
+    run_id: Mapped[str | None] = mapped_column(ForeignKey("runs.id"), index=True)
+    title: Mapped[str] = mapped_column(String(255))
+    description: Mapped[str] = mapped_column(Text)
+    severity: Mapped[str] = mapped_column(String(20), index=True)
+    status: Mapped[str] = mapped_column(String(30), default="open", index=True)
+    owner_user_id: Mapped[str | None] = mapped_column(String(255))
+    opened_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    resolution_summary: Mapped[str | None] = mapped_column(Text)
+
+    events: Mapped[list["IncidentEvent"]] = relationship(
+        cascade="all, delete-orphan", order_by="IncidentEvent.created_at"
+    )
+
+
+class FindingIncident(Base):
+    __tablename__ = "finding_incidents"
+    finding_id: Mapped[str] = mapped_column(ForeignKey("findings.id"), primary_key=True)
+    incident_id: Mapped[str] = mapped_column(ForeignKey("incidents.id"), primary_key=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class IncidentEvent(Base):
+    __tablename__ = "incident_events"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    incident_id: Mapped[str] = mapped_column(ForeignKey("incidents.id"), index=True)
+    event_type: Mapped[str] = mapped_column(String(30))
+    actor_type: Mapped[str] = mapped_column(String(20), default="worker")
+    actor_user_id: Mapped[str | None] = mapped_column(String(255))
+    content: Mapped[dict] = mapped_column(JSON, default=dict)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+# --- demo (PRD 27.35-27.36) --------------------------------------------------
+
+
+class DemoScenario(Base):
+    __tablename__ = "demo_scenarios"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    code: Mapped[str] = mapped_column(String(120), unique=True)
+    name: Mapped[str] = mapped_column(String(180))
+    description: Mapped[str] = mapped_column(Text)
+    seed_version: Mapped[int] = mapped_column(Integer, default=1)
+    configuration: Mapped[dict] = mapped_column(JSON, default=dict)
+    active: Mapped[bool] = mapped_column(Boolean, default=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+
+
+class DemoReset(Base):
+    __tablename__ = "demo_resets"
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=uid)
+    demo_scenario_id: Mapped[str | None] = mapped_column(ForeignKey("demo_scenarios.id"))
+    organisation_id: Mapped[str] = mapped_column(String(32), index=True)
+    shop_id: Mapped[str | None] = mapped_column(String(32))
+    requested_by_user_id: Mapped[str | None] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(20), default="pending")
+    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=now)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    result: Mapped[dict] = mapped_column(JSON, default=dict)

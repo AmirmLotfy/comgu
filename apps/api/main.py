@@ -31,16 +31,22 @@ from apps.api.db.models import (
     ContextSnapshot,
     DataHubWriteback,
     Finding,
+    FindingIncident,
     GeneratedArtifact,
+    Incident,
+    IncidentEvent,
     Organisation,
     PullRequest,
     RemediationPlan,
     Run,
+    RuleExecution,
     Shop,
     ValidationRun,
     WebhookEvent,
 )
 from apps.api.db.session import get_session, init_db, session
+from apps.api import incidents as incident_lifecycle
+from apps.api.registry import sync_connectors, sync_demo_scenario, sync_rule_registry
 from apps.api.runner import advance_after_approval, advance_to_approval, checksum
 from apps.api.workflow import Actor, Status, transition
 from packages.lab import bridge
@@ -54,7 +60,13 @@ DEMO_ORG_SLUG = "northstar-home"
 async def lifespan(_: FastAPI):
     init_db()
     with session() as db:
-        ensure_demo_tenant(db)
+        org, shop = ensure_demo_tenant(db)
+        # The rule registry is a projection of the executing code, refreshed on
+        # boot so the tables can never claim a version the code disagrees with.
+        n = sync_rule_registry(db)
+        sync_connectors(db, org.id, shop.id)
+        sync_demo_scenario(db)
+        print(f"[startup] {n} rules registered", flush=True)
     yield
 
 
@@ -153,8 +165,20 @@ def run_detail(db: Session, run: Run) -> dict[str, Any]:
     order = {"critical": 0, "high": 1, "medium": 2, "low": 3, "informational": 4}
     findings.sort(key=lambda f: order.get(f.severity, 9))
 
+    incident = incident_lifecycle.for_run(db, run.id)
+
     return {
         **run_summary(db, run),
+        "incident": incident_lifecycle.to_json(db, incident, include_events=True) if incident else None,
+        "rule_executions": [
+            {
+                "rule_code": e.rule_code, "status": e.status, "findings": e.finding_count,
+                "duration_ms": e.duration_ms, "skip_reason": e.skip_reason,
+                "error": e.error_message,
+            }
+            for e in db.query(RuleExecution).filter(RuleExecution.run_id == run.id)
+            .order_by(RuleExecution.started_at).all()
+        ],
         "timeline": [
             {
                 "from": t.from_status,
@@ -419,6 +443,10 @@ def approve(
         db, run, Status.APPROVED, reason=f"approved by {who.subject} ({who.role})",
         actor=Actor(type="user", id=who.subject),
     )
+    incident_lifecycle.follow_run(
+        db, run, actor_type="user", actor_user_id=who.subject,
+        detail={"decision": "approved", "role": who.role},
+    )
     # Whether this approval may open a real pull request is decided here, from
     # the caller's capabilities — not inside the runner from an env var. A judge
     # approving on a live-configured instance still gets a dry run.
@@ -462,6 +490,10 @@ def reject(
     transition(
         db, run, Status.REJECTED, reason=body.reason or f"rejected by {who.subject}",
         actor=Actor(type="user", id=who.subject),
+    )
+    incident_lifecycle.follow_run(
+        db, run, actor_type="user", actor_user_id=who.subject,
+        detail={"decision": "rejected", "reason": body.reason},
     )
     return {"run_id": run.id, "status": run.status}
 
@@ -673,7 +705,8 @@ def demo_reset(db: Session = Depends(get_session),
     deleted = db.query(Run).count()
     for model in (
         DataHubWriteback, PullRequest, ValidationRun, GeneratedArtifact,
-        Approval, RemediationPlan, Finding, ContextSnapshot,
+        Approval, RemediationPlan, IncidentEvent, FindingIncident, Incident,
+        Finding, RuleExecution, ContextSnapshot,
     ):
         db.query(model).delete()
     db.query(Run).delete()
