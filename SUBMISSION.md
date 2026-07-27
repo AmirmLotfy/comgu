@@ -135,7 +135,7 @@ dependencies are the open-source packages listed under *Built with*.
 | 0:00–0:15 | One price change. Checkout updates, the feed does not. Nobody is alerted. |
 | 0:15–0:30 | Shopify: $89 → $109, inventory 12 → 3. |
 | 0:30–0:55 | DataHub: the catalog, its lineage, the five downstream surfaces, owners — and one asset with no owner. |
-| 0:55–1:20 | Comgu run: 6 findings. Show the MCP tool trace — the blast radius came from lineage. |
+| 0:55–1:20 | Comgu run: 6 findings. Show the MCP tool trace — the blast radius came from lineage. **Cut here — see below.** |
 | 1:20–1:40 | Blast radius and business risk. The unowned manifest cannot be auto-assigned. |
 | 1:40–1:55 | Approve. Nothing was touched until this moment. |
 | 1:55–2:20 | Generated diff, then validation: 6 failed → 7 passed. |
@@ -145,6 +145,27 @@ dependencies are the open-source packages listed under *Built with*.
 
 Record with the browser at 1440×900. Reset the demo first so the contradictions
 are present.
+
+### Measured run times
+
+Timed against the live instance, so the beats above are budgeted against real
+numbers rather than estimates:
+
+| Segment | Wall clock |
+| --- | --- |
+| Trigger → `AWAITING_APPROVAL` (context, rules, plan) | **39s** |
+| Approve → `COMPLETED` (patch, validation, PR, write-back) | **10s** |
+| Full run | **49s** |
+
+**The 0:55–1:20 beat is the one to watch.** Detection genuinely takes 39s and the
+slot is 25s, so it cannot play in real time. Either cut from trigger to the
+findings list, or speed the segment up — but say the real number out loud, since
+39 seconds to catch a change across five surfaces is the point, not something to
+hide. Every other beat fits: the post-approval half is only 10s, comfortably
+inside its 25s slot.
+
+The validation figures are real — the lab suite reports `6 failed, 1 passed`
+before remediation and `7 passed` after.
 
 ---
 
