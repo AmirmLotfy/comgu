@@ -14,6 +14,7 @@ Run it before deploying:  python web/build.py
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import re
 import shutil
@@ -42,9 +43,16 @@ def main() -> int:
     ap.add_argument("--app-url", default=DEFAULT_APP_URL)
     args = ap.parse_args()
 
+    # Clear the build output without removing `.vercel`. That directory holds
+    # the project link, is gitignored, and cannot be regenerated from the repo
+    # — deleting it makes the next `vercel deploy` create a brand new project
+    # named after this folder ("dist") instead of updating the real one.
     if DIST.exists():
-        shutil.rmtree(DIST)
-    DIST.mkdir(parents=True)
+        for child in DIST.iterdir():
+            if child.name == ".vercel":
+                continue
+            shutil.rmtree(child) if child.is_dir() else child.unlink()
+    DIST.mkdir(parents=True, exist_ok=True)
 
     shutil.copy(SRC / "site.css", DIST / "site.css")
     for page in PAGES:
@@ -58,7 +66,14 @@ def main() -> int:
         )
     )
 
-    print(f"built {len(PAGES) + 2} files into {DIST}")
+    # The nav links to `/datahub`, not `/datahub.html`, so that the same markup
+    # works on the API host where FastAPI routes those paths. Static hosting has
+    # to be told to do the same or every nav link outside the homepage 404s.
+    (DIST / "vercel.json").write_text(
+        json.dumps({"cleanUrls": True, "trailingSlash": False}, indent=2) + "\n"
+    )
+
+    print(f"built {len(PAGES) + 3} files into {DIST}")
     print(f"  app links -> {args.app_url}")
     return 0
 
