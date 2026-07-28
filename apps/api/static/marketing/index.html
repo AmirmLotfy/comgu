@@ -17,6 +17,7 @@
       <a href="/datahub">DataHub</a>
       <a href="/security">Security</a>
       <a href="/open-source">Open source</a>
+      <a href="https://datahub.35-240-72-53.sslip.io">Catalog</a>
       <a href="https://github.com/AmirmLotfy/comgu">GitHub</a>
       <a class="cta" href="/app">Open the demo</a>
     </nav>
@@ -45,7 +46,8 @@
         <a class="cta ghost" href="https://github.com/AmirmLotfy/comgu">View the source</a>
       </div>
       <p class="muted" style="font-size:.9rem;margin-top:1rem">
-        No account, no card. Judge passphrase is in the submission.
+        No account, no card. Passphrase <code>northstar-2026</code> —
+        <a href="#judges">everything a judge needs</a>.
       </p>
     </div>
 
@@ -236,6 +238,7 @@ save_document                  1066ms  success</code></pre>
     <p style="margin-top:1.25rem" class="muted">
       Every artefact above is generated output, reproducible from the repository:
       <a href="https://github.com/AmirmLotfy/comgu/tree/main/examples">examples/</a>
+      · <a href="https://github.com/AmirmLotfy/comgu-commerce-lab/pull/1">a pull request a run actually opened</a>
     </p>
   </div>
 </section>
@@ -268,12 +271,69 @@ save_document                  1066ms  success</code></pre>
   </div>
 </section>
 
+<section id="judges">
+  <div class="wrap">
+    <h2>Everything a judge needs</h2>
+    <p class="lede">
+      No account and no card. The product sits behind a passphrase only because
+      this instance mutates a real catalog and opens real pull requests.
+    </p>
+
+    <div class="grid g2">
+      <div class="card">
+        <h3>Try it</h3>
+        <ul class="tight">
+          <li>
+            <strong>Comgu</strong> —
+            <a href="/app">the product</a><br>
+            passphrase <code>northstar-2026</code>
+          </li>
+          <li>
+            <strong>DataHub Core</strong> —
+            <a href="https://datahub.35-240-72-53.sslip.io">the live catalog</a><br>
+            <code>judge</code> / <code>northstar-2026</code>
+          </li>
+        </ul>
+        <p class="muted" style="font-size:.9rem">
+          The judge role is sandbox-only: it can run the full flow and approve a
+          remediation, but it cannot open a live pull request. Reset the demo as
+          often as you like — the contradictions come back every time.
+        </p>
+      </div>
+
+      <div class="card">
+        <h3>Read it</h3>
+        <ul class="tight">
+          <li><a href="https://github.com/AmirmLotfy/comgu">Comgu</a> — the platform</li>
+          <li><a href="https://github.com/AmirmLotfy/comgu-commerce-lab">Commerce Lab</a> — the repo Comgu patches</li>
+          <li><a href="https://github.com/AmirmLotfy/comgu-commerce-lab/pull/1">An example pull request</a> — opened by a real run</li>
+          <li><a href="https://github.com/AmirmLotfy/comgu/blob/main/SUBMISSION.md">Submission notes</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:1.25rem">
+      <h3>Contributed back</h3>
+      <ul class="tight">
+        <li>
+          <a href="https://github.com/datahub-project/datahub-skills/pull/58">datahub-skills#58</a>
+          — a Skill for driving DataHub over MCP
+        </li>
+        <li>
+          <a href="https://github.com/datahub-project/datahub/issues/18642">datahub#18642</a>
+          — a quickstart defect that silently under-indexes the catalog, found while building this
+        </li>
+      </ul>
+    </div>
+  </div>
+</section>
+
 <section>
   <div class="wrap" style="text-align:center">
     <h2>See it break, then fix itself</h2>
     <p class="lede" style="margin:0 auto 1.6rem">
       One price change, ten downstream assets, six findings, five files patched,
-      seven tests green — in about ninety seconds.
+      seven tests green — in under a minute.
     </p>
     <div class="buttons" style="justify-content:center">
       <a class="cta" href="/app">Open the demo</a>
@@ -294,6 +354,8 @@ save_document                  1066ms  success</code></pre>
       <div><a href="/datahub">DataHub integration</a></div>
       <div><a href="/security">Security</a></div>
       <div><a href="/open-source">Open source</a></div>
+      <div><a href="/#judges">Judge access</a></div>
+      <div><a href="https://datahub.35-240-72-53.sslip.io">DataHub catalog</a></div>
       <div><a href="https://github.com/AmirmLotfy/comgu">GitHub</a></div>
     </div>
   </div>
