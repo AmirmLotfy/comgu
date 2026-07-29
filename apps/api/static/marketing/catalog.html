@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Open the catalog — Comgu</title>
+<meta name="description" content="Credentials and a guided tour for the DataHub Core instance Comgu runs on — the lineage, structured properties and ownership every finding is derived from.">
+<link rel="stylesheet" href="/static/marketing/site.css">
+<link rel="icon" href="/static/marketing/favicon-32.png" sizes="32x32">
+<link rel="icon" href="/static/marketing/favicon-16.png" sizes="16x16">
+<link rel="icon" href="/static/marketing/favicon-32-light.png" sizes="32x32" media="(prefers-color-scheme:dark)">
+<link rel="apple-touch-icon" href="/static/marketing/apple-touch-icon.png">
+<meta property="og:image" content="https://comgu.site/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <a class="brand" href="/"><span class="mark" aria-hidden="true"></span>comgu</a>
+    <nav class="top" aria-label="Main">
+      <a href="/">Home</a>
+      <a href="/datahub">DataHub</a>
+      <a href="/security">Security</a>
+      <a href="/open-source">Open source</a>
+      <a href="/catalog" aria-current="page">Catalog</a>
+      <a href="https://github.com/AmirmLotfy/comgu">GitHub</a>
+      <a class="cta" href="/app">Open the demo</a>
+    </nav>
+  </div>
+</header>
+<main>
+
+<section class="plain"><div class="wrap">
+  <p class="eyebrow">DataHub Core</p>
+  <h1>Open the catalog</h1>
+  <p class="lede">
+    This is our own DataHub Core instance — the same stack anyone gets from
+    <code>datahub docker quickstart</code>, holding 1,267 entities across eight
+    platforms. Everything Comgu claims about lineage, ownership and authority is
+    readable here, in the source rather than in a screenshot.
+  </p>
+
+  <div class="card" style="max-width:520px">
+    <h3 style="margin-bottom:.75rem">Sign in with</h3>
+    <table style="margin:0">
+      <tbody>
+        <tr><th style="width:9rem">Username</th><td><code>judge</code></td></tr>
+        <tr><th>Password</th><td><code>northstar-2026</code></td></tr>
+      </tbody>
+    </table>
+    <p style="margin-top:1rem">
+      <a class="cta" href="https://context.comgu.site">Open context.comgu.site →</a>
+    </p>
+    <p class="muted" style="font-size:.88rem;margin-top:.9rem">
+      Your browser will show its own sign-in box. That dialog is drawn by the
+      browser, not by us, so we cannot put these credentials inside it — which is
+      why this page exists.
+    </p>
+  </div>
+
+  <div class="note context" style="margin-top:1.5rem;max-width:720px">
+    <strong>Why there is a login at all.</strong> DataHub's own account on a
+    fresh install is <code>datahub</code>/<code>datahub</code>, which is a
+    well-known default and not something to leave facing the internet. The
+    basic-auth layer in front of it exists so that default is never reachable.
+    It is not hiding anything from you.
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>What to look at</h2>
+  <p class="lede">
+    Four things, in the order Comgu reads them. Each one changes what a run does.
+  </p>
+
+  <div class="grid g2">
+    <div class="card">
+      <h3>1 · The authoritative asset</h3>
+      <p>Search for <code>NH-BREW-PRO</code> and open the Shopify catalog dataset.
+      Its structured property <code>comgu.authority</code> is set to
+      <code>authoritative</code>. That marker is what makes it the source of
+      truth — Comgu does not assume it.</p>
+    </div>
+    <div class="card">
+      <h3>2 · The lineage</h3>
+      <p>Open the <strong>Lineage</strong> tab. Five downstream surfaces project
+      from that asset, some three hops out. This graph is the blast radius —
+      Comgu walks it with <code>get_lineage</code> rather than holding its own
+      list of what to check.</p>
+    </div>
+    <div class="card">
+      <h3>3 · Criticality and ownership</h3>
+      <p>Each downstream asset carries <code>comgu.criticality</code> and
+      <code>comgu.customer_facing</code>, which set finding severity. Note that
+      the AI shopping manifest has <em>no owner</em> — Comgu turns that absence
+      into a finding instead of guessing a recipient.</p>
+    </div>
+    <div class="card">
+      <h3>4 · What a run wrote back</h3>
+      <p>After you approve a remediation in the demo, the affected assets carry
+      <code>comgu.last_run</code>, <code>comgu.pull_request_url</code>,
+      <code>comgu.incident_status</code> and a <code>comgu:remediated</code> tag,
+      plus a Decision document. Every write is read back before it is reported.</p>
+    </div>
+  </div>
+
+  <div class="note" style="margin-top:1.5rem">
+    <strong>Try breaking it.</strong> Delete the lineage edges from the Shopify
+    catalog asset, trigger a run, and the blast radius comes back empty — every
+    rule skips. Clear <code>comgu.authority</code> and the engine halts rather
+    than choosing a value. Restore either and the six findings return. Two tests
+    in the repository assert exactly this.
+  </div>
+
+  <p style="margin-top:1.5rem">
+    <a href="/datahub">How Comgu uses DataHub, in detail →</a>
+  </p>
+</div></section>
+
+<section><div class="wrap">
+  <h2>Simulated assets are labelled</h2>
+  <p class="lede">
+    The downstream commerce platforms are simulated — there is no live Merchant
+    Center account behind this. Every simulated asset is tagged
+    <code>comgu:simulated-downstream</code> in the catalog you are about to open,
+    so you can tell them apart without taking our word for it.
+  </p>
+</div></section>
+
+</main>
+<footer>
+  <div class="wrap">
+    <div>
+      <div class="brand" style="margin-bottom:.5rem"><span class="mark" aria-hidden="true"></span>comgu</div>
+      <div>Catch commerce changes before customers do.</div>
+      <div style="margin-top:.4rem">Apache-2.0 · Built for the DataHub Agent Hackathon</div>
+    </div>
+    <div>
+      <div><a href="/datahub">DataHub integration</a></div>
+      <div><a href="/security">Security</a></div>
+      <div><a href="/open-source">Open source</a></div>
+      <div><a href="/#judges">Judge access</a></div>
+      <div><a href="/catalog">DataHub catalog</a></div>
+      <div><a href="https://github.com/AmirmLotfy/comgu">GitHub</a></div>
+    </div>
+  </div>
+</footer>
+</body>
+</html>

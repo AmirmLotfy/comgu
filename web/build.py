@@ -27,7 +27,8 @@ DIST = ROOT / "web" / "dist"
 # Where the product actually runs. Overridden once comgu.site resolves.
 DEFAULT_APP_URL = os.environ.get("COMGU_APP_URL", "https://app.comgu.site")
 
-PAGES = ["index.html", "datahub.html", "security.html", "open-source.html"]
+PAGES = ["index.html", "datahub.html", "security.html", "open-source.html",
+         "catalog.html"]
 
 
 def adapt(text: str, app_url: str) -> str:

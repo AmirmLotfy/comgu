@@ -764,6 +764,17 @@ if STATIC_DIR.exists():
     def page_open_source() -> FileResponse:
         return FileResponse(MARKETING_DIR / "open-source.html")
 
+    @app.get("/catalog")
+    def page_catalog() -> FileResponse:
+        """Credentials and a guided tour for the DataHub instance.
+
+        The catalog sits behind HTTP basic auth, whose dialog is drawn by the
+        browser before any page of ours loads — so a judge following a bare link
+        gets a username box and no way to know what to type. This page is what
+        the links point at instead.
+        """
+        return FileResponse(MARKETING_DIR / "catalog.html")
+
     @app.get("/app")
     def product() -> FileResponse:
         return FileResponse(STATIC_DIR / "index.html")
