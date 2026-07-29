@@ -26,7 +26,8 @@ passphrase because the instance mutates a real catalog and a real repo.
 
 - **Comgu:** https://app.comgu.site — the product is at `/app`,
   passphrase `northstar-2026` (role: judge — sandbox only, cannot open a live PR)
-- **DataHub catalog:** https://context.comgu.site — `judge` / `northstar-2026`
+- **DataHub catalog:** https://comgu.site/catalog — credentials and a guided tour
+  (the catalog itself is `context.comgu.site`, `judge` / `northstar-2026`)
 - **Example pull request:** https://github.com/AmirmLotfy/comgu-commerce-lab/pull/1
 
 ---
