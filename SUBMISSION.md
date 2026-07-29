@@ -15,7 +15,8 @@ Everything the Devpost form asks for, in one place.
 | Marketing site | https://comgu.site |
 | Public repository | https://github.com/AmirmLotfy/comgu |
 | Licence | Apache-2.0 |
-| Challenge category | **Metadata-Aware Code Generation & Development** (secondary: Agents That Do Real Work) |
+| Challenge category | **Agents That Do Real Work** |
+| | *Comgu reads the catalog over MCP, takes action, and writes the resolution back — a Decision document, structured properties and a tag, each read back. Not Category 2: it patches commerce config, not transformation models or DAGs.* |
 | Video | *to record — under 3 minutes, public on YouTube or Vimeo* |
 
 ### Judge test access
