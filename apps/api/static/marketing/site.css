@@ -2,7 +2,7 @@
    Warm Ivory dominates here; White is reserved for the product (PRD 9.4).
    System font stack — the page must stay self-contained, so no webfonts. */
 :root{
-  --ink:#15171A; --ivory:#F6F2E9; --signal:#FF6B3D; --proof:#57C7A5;
+  --ink:#1A1C1F; --ivory:#F6F2E9; --signal:#F3552A; --proof:#57C7A5;
   --context:#5967E8; --slate:#697078; --border:#D8D4CB; --white:#FFFFFF;
   --critical:#D94B45; --warning:#D98A24;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
@@ -22,14 +22,16 @@ header{position:sticky;top:0;background:rgba(246,242,233,.92);backdrop-filter:bl
 header .wrap{display:flex;align-items:center;gap:1.5rem;padding-top:.8rem;padding-bottom:.8rem}
 .brand{display:flex;align-items:center;gap:.55rem;font-weight:700;font-size:1.2rem;
   letter-spacing:-.02em;color:var(--ink);text-decoration:none}
-.mark{width:26px;height:26px;border-radius:7px;background:var(--ink);position:relative}
-.mark::after{content:"";position:absolute;inset:38% 38%;background:var(--signal);border-radius:2px}
+/* The real mark. Kept as a background so the nine <span class="mark"> lockups
+   across the site pick it up without markup changes. */
+.mark{width:26px;height:26px;flex:0 0 auto;
+  background:url("/static/marketing/logo-dark-64.png") center/contain no-repeat}
 nav.top{display:flex;gap:1.25rem;margin-left:auto;align-items:center;flex-wrap:wrap}
 nav.top a{color:var(--slate);text-decoration:none;font-size:.95rem}
 nav.top a:hover,nav.top a[aria-current="page"]{color:var(--ink)}
 .cta{background:var(--signal);color:#fff!important;padding:.5rem 1rem;border-radius:9px;
   font-weight:650;font-size:.95rem;text-decoration:none;display:inline-block}
-.cta:hover{background:#e85b2f}
+.cta:hover{background:#d84a20}
 .cta.ghost{background:transparent;color:var(--ink)!important;border:1px solid var(--border)}
 .cta.ghost:hover{border-color:var(--ink);background:transparent}
 

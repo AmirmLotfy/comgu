@@ -4,10 +4,16 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Comgu — commerce change control</title>
-<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='22' fill='%2315171A'/><rect x='42' y='42' width='16' height='16' rx='3' fill='%23FF6B3D'/></svg>">
+<link rel="icon" href="/static/marketing/favicon-32.png" sizes="32x32">
+<link rel="icon" href="/static/marketing/favicon-16.png" sizes="16x16">
+<link rel="icon" href="/static/marketing/favicon-32-light.png" sizes="32x32" media="(prefers-color-scheme:dark)">
+<link rel="apple-touch-icon" href="/static/marketing/apple-touch-icon.png">
+<meta property="og:image" content="https://comgu.vercel.app/og.png">
+<meta property="og:type" content="website">
+<meta name="twitter:card" content="summary_large_image">
 <style>
 :root{
-  --ink:#15171A; --ivory:#F6F2E9; --signal:#FF6B3D; --proof:#57C7A5;
+  --ink:#1A1C1F; --ivory:#F6F2E9; --signal:#F3552A; --proof:#57C7A5;
   --context:#5967E8; --slate:#697078; --border:#D8D4CB; --white:#FFFFFF;
   --critical:#D94B45; --warning:#D98A24;
   --mono:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
@@ -23,15 +29,15 @@ button:hover:not(:disabled){border-color:var(--ink)}
 button:disabled{opacity:.45;cursor:not-allowed}
 button:focus-visible,a:focus-visible{outline:2px solid var(--context);outline-offset:2px}
 .btn-primary{background:var(--signal);border-color:var(--signal);color:#fff;font-weight:600}
-.btn-primary:hover:not(:disabled){background:#e85b2f;border-color:#e85b2f}
+.btn-primary:hover:not(:disabled){background:#d84a20;border-color:#d84a20}
 .btn-approve{background:var(--proof);border-color:var(--proof);color:#0a2b22;font-weight:600}
 .btn-reject{background:var(--white);border-color:var(--critical);color:var(--critical);font-weight:600}
 
 header{border-bottom:1px solid var(--border);padding:.85rem 1.25rem;display:flex;
   align-items:center;gap:1rem;flex-wrap:wrap;position:sticky;top:0;background:var(--white);z-index:10}
 .brand{display:flex;align-items:center;gap:.6rem;font-weight:700;font-size:1.15rem;letter-spacing:-.02em}
-.mark{width:26px;height:26px;border-radius:7px;background:var(--ink);position:relative;flex:0 0 auto}
-.mark::after{content:"";position:absolute;inset:38% 38%;background:var(--signal);border-radius:2px}
+.mark{width:26px;height:26px;flex:0 0 auto;
+  background:url("/static/marketing/logo-dark-64.png") center/contain no-repeat}
 .tagline{color:var(--slate);font-size:.85rem;border-left:1px solid var(--border);padding-left:1rem}
 .spacer{flex:1}
 .env{font-family:var(--mono);font-size:.72rem;color:var(--slate);background:var(--ivory);
