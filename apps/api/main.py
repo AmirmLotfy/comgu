@@ -40,6 +40,7 @@ from apps.api.db.models import (
     RemediationPlan,
     Run,
     RuleExecution,
+    RunTransition,
     Shop,
     ValidationRun,
     WebhookEvent,
@@ -686,6 +687,18 @@ def demo_status(db: Session = Depends(get_session),
     }
 
 
+# Children of a run, in delete order — every model carrying a foreign key to
+# `runs.id`. A missing entry only breaks reset once a run exists, so it passes
+# against an empty database and then fails in front of whoever is using the
+# demo. `tests/test_demo_reset.py` reads this list back out of the ORM metadata
+# and fails if a new model gains that foreign key without being added here.
+DEMO_RESET_CASCADE = (
+    DataHubWriteback, PullRequest, ValidationRun, GeneratedArtifact,
+    Approval, RemediationPlan, IncidentEvent, FindingIncident, Incident,
+    Finding, RuleExecution, ContextSnapshot, RunTransition,
+)
+
+
 @app.post("/api/demo/reset")
 def demo_reset(db: Session = Depends(get_session),
                who: auth.Principal = Depends(auth.require(auth.DEMO_RESET))) -> dict[str, Any]:
@@ -712,11 +725,7 @@ def demo_reset(db: Session = Depends(get_session),
         )
 
     deleted = db.query(Run).count()
-    for model in (
-        DataHubWriteback, PullRequest, ValidationRun, GeneratedArtifact,
-        Approval, RemediationPlan, IncidentEvent, FindingIncident, Incident,
-        Finding, RuleExecution, ContextSnapshot,
-    ):
+    for model in DEMO_RESET_CASCADE:
         db.query(model).delete()
     db.query(Run).delete()
     db.query(CommerceEvent).delete()
