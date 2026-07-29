@@ -37,3 +37,6 @@ alembic/versions/__pycache__/
 # Vercel
 web/dist/
 .vercel/
+
+# Gallery captures — regenerate with `python web/screenshots.py`
+screenshots/
