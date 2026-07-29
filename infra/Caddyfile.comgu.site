@@ -10,10 +10,15 @@ app.comgu.site, app.35-240-72-53.sslip.io {
 context.comgu.site, datahub.35-240-72-53.sslip.io {
     encode gzip
     basic_auth {
-        judge $2a$14$iDxBvm8ydAlCz/c3QQ/2XugqRrM7Jfuf2C89EIAsSJoxktMYGAMWW
+        judge <BCRYPT_HASH>   # caddy hash-password --plaintext "$COMGU_JUDGE_PASSWORD"
     }
     reverse_proxy 127.0.0.1:9002
 }
 
 # comgu.site and www.comgu.site are deliberately absent: they resolve to Vercel,
 # so Caddy would fail their ACME challenges repeatedly and hit rate limits.
+#
+# The running config has the bcrypt hash inlined; it is a placeholder here.
+# The judge passphrase is published in the README on purpose — the hash protects
+# nothing that is not already public, but a credential hash does not belong in
+# a repository regardless.

@@ -28,7 +28,7 @@ Built for [Build with DataHub: The Agent Hackathon](https://datahub.devpost.com/
 
 | | |
 | --- | --- |
-| **Marketing site** | **https://comgu.vercel.app** |
+| **Marketing site** | **https://comgu.site** |
 | **Live demo** | **https://app.comgu.site/app** |
 | DataHub catalog | https://context.comgu.site — `judge` / `northstar-2026` |
 | Example pull request | [comgu-commerce-lab#1](https://github.com/AmirmLotfy/comgu-commerce-lab/pull/1) |
