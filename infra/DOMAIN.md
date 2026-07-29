@@ -1,10 +1,33 @@
-# Switching to comgu.site
+# comgu.site
 
-`comgu.site` is **not registered yet** — verified against the `.site` registry.
-Everything below is staged so the switch is mechanical once it is bought.
+**Done.** Registered at Namecheap on 27 July 2026, nameservers delegated to
+Vercel, and the product and catalog cut over on 29 July 2026.
 
-Nothing here is required for the hackathon: the sslip.io hosts and
-`comgu.vercel.app` are live and are what the submission currently points at.
+| Host | Serves | Where |
+| --- | --- | --- |
+| `comgu.site`, `www.comgu.site` | Marketing | Vercel |
+| `app.comgu.site` | Product + API | GCE VM `35.240.72.53` |
+| `context.comgu.site` | DataHub UI | GCE VM (behind basic auth) |
+
+The sslip.io hosts are **deliberately still live** and listed alongside the new
+names in the Caddyfile, so every URL published before the cutover keeps working.
+Do not remove them.
+
+## Two things the original staging got wrong
+
+Recorded because both would have broken the switch for anyone following it:
+
+1. **A wildcard `ALIAS *` in the Vercel zone swallows every subdomain.** Adding
+   the domain to Vercel creates `* -> cname.vercel-dns-016.com`, so
+   `app.comgu.site` resolved to Vercel and failed the TLS handshake. Explicit
+   `A` records for `app` and `context` override it — without them Caddy never
+   receives an ACME challenge.
+
+2. **The staged Caddyfile used `{$COMGU_JUDGE_PASSWORD_HASH}` and listed the
+   apex.** Caddy on this host has no such environment variable — the hash is
+   inlined — so basic auth would have broken. And `comgu.site`/`www` resolve to
+   Vercel, so listing them here makes Caddy fail their ACME challenges
+   repeatedly and burn Let's Encrypt rate limits. Neither is in the live config.
 
 ## What runs where, and why
 

@@ -11,8 +11,8 @@ Everything the Devpost form asks for, in one place.
 | --- | --- |
 | Project name | Comgu |
 | Tagline | Catch commerce changes before customers do. |
-| Live demo URL | https://app.35-240-72-53.sslip.io/app |
-| Marketing site | https://comgu.vercel.app |
+| Live demo URL | https://app.comgu.site/app |
+| Marketing site | https://comgu.site |
 | Public repository | https://github.com/AmirmLotfy/comgu |
 | Licence | Apache-2.0 |
 | Challenge category | **Metadata-Aware Code Generation & Development** (secondary: Agents That Do Real Work) |
@@ -23,9 +23,9 @@ Everything the Devpost form asks for, in one place.
 No account or credit card required. The product is behind a demo
 passphrase because the instance mutates a real catalog and a real repo.
 
-- **Comgu:** https://app.35-240-72-53.sslip.io — the product is at `/app`,
+- **Comgu:** https://app.comgu.site — the product is at `/app`,
   passphrase `northstar-2026` (role: judge — sandbox only, cannot open a live PR)
-- **DataHub catalog:** https://datahub.35-240-72-53.sslip.io — `judge` / `northstar-2026`
+- **DataHub catalog:** https://context.comgu.site — `judge` / `northstar-2026`
 - **Example pull request:** https://github.com/AmirmLotfy/comgu-commerce-lab/pull/1
 
 ---
@@ -177,5 +177,5 @@ before remediation and `7 passed` after.
 - [x] Tag a release (`v1.0.0`) on both repositories
 - [x] Confirm the live demo and DataHub URLs respond
 - [ ] Complete the Devpost feedback survey (10 × $50 prizes)
-- [ ] Optional: register `comgu.site` — every step is staged in [`infra/DOMAIN.md`](infra/DOMAIN.md), and both apex and www are already
-      attached to the Vercel project
+- [x] Register `comgu.site` and cut the product and catalog over to it — see [`infra/DOMAIN.md`](infra/DOMAIN.md).
+      The sslip.io hosts stay live alongside, so links published earlier still work.
