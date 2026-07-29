@@ -141,13 +141,33 @@ pre.light{background:var(--ivory);color:var(--ink);border:1px solid var(--border
 
 <div id="signin" hidden style="max-width:420px;margin:12vh auto;padding:0 1.25rem">
   <h2 style="margin-bottom:.35rem">Sign in</h2>
-  <p class="muted" style="font-size:.9rem">This instance is a public sandbox. Judges: the passphrase is in the submission.</p>
+  <!-- The passphrase is shown, not hidden. It is published in the README, on
+       the marketing site and in the submission, so withholding it here would
+       only cost a judge time. The judge role cannot open a live pull request,
+       which is what makes publishing it safe. -->
+  <p class="muted" style="font-size:.9rem">
+    Public sandbox — no account needed. Passphrase
+    <code style="font-size:.95em">northstar-2026</code>.
+  </p>
   <form id="signin-form" style="display:flex;gap:.5rem;margin-top:1rem">
     <label for="pass" style="position:absolute;left:-9999px">Demo passphrase</label>
     <input id="pass" type="password" autocomplete="current-password" placeholder="Demo passphrase"
       style="flex:1;padding:.55rem .7rem;border:1px solid var(--border);border-radius:8px;font:inherit">
     <button class="btn-primary" type="submit">Enter</button>
   </form>
+  <button id="judge-enter" type="button"
+    style="margin-top:.6rem;width:100%;padding:.55rem .7rem;border:1px solid var(--border);
+           border-radius:8px;background:transparent;font:inherit;cursor:pointer">
+    Enter as judge →
+  </button>
+  <p class="muted" style="font-size:.82rem;margin-top:.9rem;line-height:1.5">
+    The judge role can run the full flow and approve a remediation, but cannot
+    open a live pull request. <strong>Reset demo</strong> restores the
+    contradictions, as often as you like.<br>
+    DataHub catalog: <a href="https://context.comgu.site">context.comgu.site</a>
+    — <code style="font-size:.95em">judge</code> /
+    <code style="font-size:.95em">northstar-2026</code>
+  </p>
   <p id="signin-err" class="muted" style="color:var(--critical);font-size:.85rem;min-height:1.2em"></p>
 </div>
 
@@ -240,16 +260,26 @@ async function bootstrap(){
   signOut();
 }
 
-document.getElementById("signin-form").addEventListener("submit", async e => {
-  e.preventDefault();
+async function requestToken(passphrase){
   const err = document.getElementById("signin-err"); err.textContent = "";
   try{
     const r = await fetch("/api/auth/demo-token",{method:"POST",
       headers:{"Content-Type":"application/json"},
-      body:JSON.stringify({passphrase:document.getElementById("pass").value})});
+      body:JSON.stringify({passphrase})});
     if(!r.ok){ err.textContent = r.status===401 ? "Incorrect passphrase." : "Demo access is not configured."; return; }
     await signIn((await r.json()).token);
   }catch(ex){ err.textContent = ex.message; }
+}
+
+document.getElementById("signin-form").addEventListener("submit", e => {
+  e.preventDefault();
+  requestToken(document.getElementById("pass").value);
+});
+
+// One click for judges. The passphrase is public, so making them retype it
+// from the line directly above only adds a chance to typo it.
+document.getElementById("judge-enter").addEventListener("click", () => {
+  requestToken("northstar-2026");
 });
 
 function statusPill(s){
