@@ -40,3 +40,6 @@ web/dist/
 
 # Gallery captures — regenerate with `python web/screenshots.py`
 screenshots/
+
+# Recorded takes — regenerate with `python web/video.py`
+video/
